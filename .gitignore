@@ -1,0 +1,51 @@
+# Environment & Secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials.json
+service-account*.json
+
+# Python Bytecode & Virtual Environments
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/
+
+# Geospatial Rasters & Large ML Artifacts
+*.tif
+*.tiff
+*.vrt
+*.npy
+*.npz
+*.mmap
+*.pt
+*.pth
+*.onnx
+*.safetensors
+*.ckpt
+*.h5
+ml/data/
+ml/weights/
+ml/outputs/
+
+# Antigravity & CI/CD Ephemeral Outputs
+pr_review_comment.md
+*.log
+
+# OS & Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

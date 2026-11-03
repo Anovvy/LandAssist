@@ -338,6 +338,132 @@ def prob_map_to_osm_polygons(
     return gpd.GeoDataFrame(records, columns=columns, geometry="geometry", crs="EPSG:4326")
 
 
+def export_visual_qa_html(
+    gdf: gpd.GeoDataFrame,
+    html_path: Union[str, Path],
+) -> Path:
+    """Generate a standalone interactive Leaflet + Satellite QA map HTML before PostGIS ingestion."""
+    out_html = Path(html_path)
+    out_html.parent.mkdir(parents=True, exist_ok=True)
+    geojson_str = gdf.to_json() if not gdf.empty else '{"type": "FeatureCollection", "features": []}'
+
+    html_content = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>LandAssist — Pre-PostGIS Interactive Visual QA</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    body, html {{ margin: 0; padding: 0; height: 100%; font-family: system-ui, -apple-system, sans-serif; background: #0f172a; color: #f8fafc; }}
+    #map {{ width: 100%; height: 100%; }}
+    .qa-panel {{
+      position: absolute; top: 14px; right: 14px; z-index: 1000;
+      background: rgba(15, 23, 42, 0.92); backdrop-filter: blur(8px);
+      padding: 16px; border-radius: 12px; width: 290px;
+      border: 1px solid rgba(148, 163, 184, 0.25); box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    }}
+    .qa-panel h3 {{ margin: 0 0 8px 0; font-size: 15px; color: #38bdf8; }}
+    .qa-row {{ margin: 10px 0; font-size: 13px; }}
+    .badge-ind {{ display: inline-block; width: 12px; height: 12px; background: #f59e0b; border-radius: 3px; margin-right: 6px; vertical-align: middle; }}
+    .badge-res {{ display: inline-block; width: 12px; height: 12px; background: #10b981; border-radius: 3px; margin-right: 6px; vertical-align: middle; }}
+    input[type=range] {{ width: 100%; cursor: pointer; }}
+    .stat-box {{ background: rgba(30, 41, 59, 0.8); padding: 8px 10px; border-radius: 8px; font-size: 12px; line-height: 1.5; }}
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <div class="qa-panel">
+    <h3>🛰️ LandAssist Pre-Ingest QA</h3>
+    <div class="stat-box" id="stats">Loading polygons...</div>
+    <div class="qa-row">
+      <label><input type="checkbox" id="chkInd" checked /> <span class="badge-ind"></span>Industrial (landuse=industrial)</label><br/>
+      <label><input type="checkbox" id="chkRes" checked /> <span class="badge-res"></span>Residential (landuse=residential)</label>
+    </div>
+    <div class="qa-row">
+      <label>Min Confidence: <strong id="confVal">0.35</strong></label>
+      <input type="range" id="confSlider" min="0.0" max="0.95" step="0.05" value="0.35" />
+    </div>
+    <div class="qa-row">
+      <label>Polygon Fill Opacity: <strong id="opacVal">0.40</strong></label>
+      <input type="range" id="opacSlider" min="0.05" max="0.90" step="0.05" value="0.40" />
+    </div>
+  </div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const rawData = {geojson_str};
+    const map = L.map('map').setView([-6.22, 106.52], 13);
+    const sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{{z}}/{{y}}/{{x}}', {{
+      maxZoom: 19, attribution: 'Esri World Imagery'
+    }}).addTo(map);
+    const osm = L.tileLayer('https://{{s}}.tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png', {{
+      maxZoom: 19, attribution: '© OpenStreetMap'
+    }});
+    L.control.layers({{"Satellite Imagery": sat, "OpenStreetMap": osm}}).addTo(map);
+
+    let geoLayer = null;
+    function renderLayer() {{
+      if (geoLayer) map.removeLayer(geoLayer);
+      const showInd = document.getElementById('chkInd').checked;
+      const showRes = document.getElementById('chkRes').checked;
+      const minConf = parseFloat(document.getElementById('confSlider').value);
+      const fillOpac = parseFloat(document.getElementById('opacSlider').value);
+      document.getElementById('confVal').textContent = minConf.toFixed(2);
+      document.getElementById('opacVal').textContent = fillOpac.toFixed(2);
+
+      let countInd = 0, countRes = 0, areaIndHa = 0, areaResHa = 0;
+      geoLayer = L.geoJSON(rawData, {{
+        filter: (f) => {{
+          const p = f.properties || {{}};
+          const c = p['la:confidence'] ?? 1.0;
+          if (c < minConf) return false;
+          if (p.landuse === 'industrial' && !showInd) return false;
+          if (p.landuse === 'residential' && !showRes) return false;
+          return true;
+        }},
+        style: (f) => {{
+          const isInd = f.properties.landuse === 'industrial';
+          return {{
+            color: isInd ? '#f59e0b' : '#10b981',
+            weight: 2,
+            fillColor: isInd ? '#f59e0b' : '#10b981',
+            fillOpacity: fillOpac
+          }};
+        }},
+        onEachFeature: (f, layer) => {{
+          const p = f.properties || {{}};
+          if (p.landuse === 'industrial') {{ countInd++; areaIndHa += (p.area_m2 || 0) / 10000.0; }}
+          if (p.landuse === 'residential') {{ countRes++; areaResHa += (p.area_m2 || 0) / 10000.0; }}
+          layer.bindPopup(
+            `<b>landuse=${{p.landuse}}</b><br/>` +
+            `Confidence: <b>${{(p['la:confidence'] * 100).toFixed(1)}}%</b><br/>` +
+            `Area: <b>${{(p.area_m2 || 0).toLocaleString()}} m²</b> (${{((p.area_m2 || 0)/10000).toFixed(2)}} ha)<br/>` +
+            `Version: <code>${{p['la:version']}}</code>`
+          );
+        }}
+      }}).addTo(map);
+
+      document.getElementById('stats').innerHTML =
+        `Visible Polygons: <b>${{countInd + countRes}}</b><br/>` +
+        `• Industrial: <b>${{countInd}}</b> (${{areaIndHa.toFixed(1)}} ha)<br/>` +
+        `• Residential: <b>${{countRes}}</b> (${{areaResHa.toFixed(1)}} ha)`;
+    }}
+
+    renderLayer();
+    if (geoLayer && geoLayer.getLayers().length > 0) {{
+      map.fitBounds(geoLayer.getBounds(), {{padding: [24, 24]}});
+    }}
+    ['chkInd', 'chkRes', 'confSlider', 'opacSlider'].forEach(id => {{
+      document.getElementById(id).addEventListener('input', renderLayer);
+    }});
+  </script>
+</body>
+</html>
+"""
+    out_html.write_text(html_content, encoding="utf-8")
+    return out_html
+
+
 def main() -> None:
     """CLI entrypoint for converting probability memmaps into smoothed GeoJSON/GPKG."""
     parser = argparse.ArgumentParser(
@@ -391,6 +517,18 @@ def main() -> None:
         default=0.45,
         help="Probability threshold for residential class.",
     )
+    parser.add_argument(
+        "--utm-epsg",
+        type=str,
+        default="EPSG:32748",
+        help="Metric UTM CRS for Chaikin smoothing and area calculation (default EPSG:32748).",
+    )
+    parser.add_argument(
+        "--html-preview",
+        type=str,
+        default=None,
+        help="Optional path to generate a standalone interactive Leaflet satellite QA map (.html).",
+    )
 
     args = parser.parse_args()
     with rasterio.open(args.ref_tif) as src:
@@ -414,6 +552,7 @@ def main() -> None:
         sigma=args.sigma,
         industrial_thresh=args.industrial_thresh,
         residential_thresh=args.residential_thresh,
+        utm_epsg=args.utm_epsg,
     )
 
     out_path = Path(args.output)
@@ -421,6 +560,11 @@ def main() -> None:
     driver = "GPKG" if out_path.suffix.lower() == ".gpkg" else "GeoJSON"
     gdf.to_file(out_path, driver=driver)
     print(f"[OK] Exported {len(gdf)} smoothed polygons to {out_path} ({driver}).")
+
+    if args.html_preview:
+        preview_path = export_visual_qa_html(gdf, args.html_preview)
+        print(f"[OK] Generated interactive visual QA map at {preview_path}")
+
 
 
 if __name__ == "__main__":

@@ -51,13 +51,17 @@ Mappers can load LandAssist predictions into [Rapid Editor](https://rapideditor.
 1. Open **[https://rapideditor.org/edit](https://rapideditor.org/edit)** and pan to **Kabupaten Tangerang** (e.g., Cikupa, Balaraja, Pasar Kemis, or Curug industrial corridors around `106.52, -6.20`).
 2. Open the **Map Data** pane on the right sidebar (`Shortcut: U` or click the layers icon).
 3. Under **Custom Data**, click **Add Custom Data URL** and paste either endpoint:
-   - **GeoJSON BBox Endpoint (Interactive Feature Selection):**
+   - **Local Development / Offline Demo (`localhost:8000`):**
+     ```text
+     http://localhost:8000/v1/landuse.geojson?bbox={bbox}&version=v1.0.0
+     ```
+   - **Cloud Production Deployment (`<your-domain>` = Cloud Run / Railway / Render URL):**
      ```text
      https://<your-domain>/v1/landuse.geojson?bbox={bbox}&version=v1.0.0
      ```
    - **Mapbox Vector Tiles (MVT) Endpoint (High-Density Regional Rendering):**
      ```text
-     https://<your-domain>/v1/tiles/{z}/{x}/{y}.pbf?version=v1.0.0
+     http://localhost:8000/v1/tiles/{z}/{x}/{y}.pbf?version=v1.0.0
      ```
 4. Each polygon automatically carries OpenStreetMap-compliant tags (`landuse=industrial` or `landuse=residential`, `source=LandAssist AI (Sentinel-2 GSE)`, `model_version=v1.0.0`) ready for mapper inspection and conversion.
 
@@ -113,20 +117,28 @@ ruff check backend/ ml/src/ scripts/
 pytest backend/tests/ -v
 ```
 
-### 4. Run End-to-End ML Inference, Vectorization & PostGIS Ingestion
+### 4. Run End-to-End GSE Download, ML Inference, Visual QA & PostGIS Ingestion
 
 ```bash
-# 1. Sliding-window inference with 2D Hann blending & disk memmap
-python -m ml.src.infer_sliding \
-  --input data/tangerang_gse_64band.tif \
-  --output outputs/tangerang_pred_v1.0.0.tif \
-  --weights weights/segformer_mit_b2_v1.0.0.pt
+# 0. (Optional) Download 64-band GSE GeoTIFF for any target AOI via Earth Engine
+python -m ml.src.download_gse \
+  --bbox "106.45,-6.30,106.60,-6.15" \
+  --year 2025 \
+  --output data/tangerang_gse_64band.tif
 
-# 2. GDAL sieve (>= 1,600 m²) + UTM Zone 48S Chaikin smoothing
+# 1. Sliding-window inference with 2D Hann blending & disk memmap
+python -m ml.src.infer_tangerang \
+  --checkpoint weights/segformer-mitb2-gse64-v1.0.0.pt \
+  --input-tif data/tangerang_gse_64band.tif \
+  --temp-dir ./tmp_mmap
+
+# 2. GDAL sieve (>= 1,600 m²) + UTM Zone 48S Chaikin smoothing + Interactive HTML Visual QA
 python -m ml.src.vectorize \
-  --input outputs/tangerang_pred_v1.0.0.tif \
+  --prob-mmap ./tmp_mmap/pred_sum.mmap \
+  --ref-tif data/tangerang_gse_64band.tif \
   --output outputs/tangerang_v1.0.0.geojson \
-  --model-version v1.0.0
+  --model-version v1.0.0 \
+  --html-preview outputs/tangerang_v1.0.0_qa.html
 
 # 3. Bulk PostGIS ingestion via GeoPandas + SQLAlchemy
 python -m ml.src.ingest_postgis \

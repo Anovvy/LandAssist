@@ -43,6 +43,11 @@ ml/outputs/
 # Antigravity & CI/CD Ephemeral Outputs
 pr_review_comment.md
 *.log
+docs/DEEP_DIVE_MENTOR_GUIDE.md
+tmp_mmap*/
+outputs/
+data/
+weights/
 
 # OS & Editor
 .DS_Store

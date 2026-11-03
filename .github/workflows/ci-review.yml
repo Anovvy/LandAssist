@@ -1,0 +1,79 @@
+name: CI & Antigravity SDK Review
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  lint-and-test:
+    name: Ruff Lint & FastAPI Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install backend & test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+
+      - name: Run Ruff Linter across backend, ml, and scripts
+        run: |
+          ruff check backend/ ml/src/ scripts/
+
+      - name: Run FastAPI & PostGIS Endpoint Unit Tests
+        run: |
+          pytest backend/tests/ -v
+
+  antigravity-sdk-review:
+    name: Antigravity SDK Automated PR Review
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    needs: lint-and-test
+    steps:
+      - name: Checkout repository with full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Antigravity Python SDK
+        run: |
+          python -m pip install --upgrade pip
+          pip install google-antigravity || echo "Using built-in static fallback until google-antigravity runner credentials are provided"
+
+      - name: Execute Antigravity Read-Only Code Review
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          if [ -n "$GEMINI_API_KEY" ]; then
+            python scripts/agy_code_review.py --base "origin/${{ github.base_ref }}" --head "HEAD"
+          else
+            python scripts/agy_code_review.py --base "origin/${{ github.base_ref }}" --head "HEAD" --dry-run
+          fi
+
+      - name: Post Review Comment to Pull Request
+        if: always() && hashFiles('pr_review_comment.md') != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr comment ${{ github.event.pull_request.number }} --body-file pr_review_comment.md

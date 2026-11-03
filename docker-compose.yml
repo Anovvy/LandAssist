@@ -1,0 +1,39 @@
+version: "3.9"
+
+services:
+  postgis:
+    image: postgis/postgis:16-3.4-alpine
+    container_name: landassist-postgis
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-landassist}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-landassist_secret}
+      POSTGRES_DB: ${POSTGRES_DB:-landassist}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgis_data:/var/lib/postgresql/data
+      - ./sql/001_init_postgis.sql:/docker-entrypoint-initdb.d/001_init_postgis.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-landassist} -d ${POSTGRES_DB:-landassist}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: landassist-backend
+    restart: unless-stopped
+    depends_on:
+      postgis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-landassist}:${POSTGRES_PASSWORD:-landassist_secret}@postgis:5432/${POSTGRES_DB:-landassist}
+      DEFAULT_MODEL_VERSION: ${DEFAULT_MODEL_VERSION:-v1.0.0}
+    ports:
+      - "8000:8000"
+
+volumes:
+  postgis_data:

@@ -1,0 +1,12 @@
+{
+  "hooks": [
+    {
+      "name": "lint-reminder",
+      "description": "Remind the agent to run ruff check and pytest after modifying Python source files in backend/, ml/src/, or scripts/.",
+      "event": "after_file_edit",
+      "pattern": "**/*.py",
+      "enabled": true,
+      "command": "ruff check backend/ ml/src/ scripts/"
+    }
+  ]
+}

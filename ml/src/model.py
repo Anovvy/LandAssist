@@ -9,8 +9,13 @@ Multiclass Foreground Dice Loss.
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import json
 from pathlib import Path
 from typing import Any, Dict, Optional, Sequence, Tuple, Union
+
+REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+DEFAULT_WEIGHT_DIR = REPO_ROOT / "weight"
+DEFAULT_MANIFEST_PATH = DEFAULT_WEIGHT_DIR / "manifest.json"
 
 import torch
 import torch.nn as nn
@@ -251,16 +256,89 @@ def save_versioned_checkpoint(
     return out_path
 
 
+def resolve_checkpoint_path(
+    checkpoint: Optional[Union[str, Path]] = None,
+    model_version: Optional[str] = None,
+    weight_dir: Union[str, Path] = DEFAULT_WEIGHT_DIR,
+) -> Path:
+    """Resolve a `.pt` checkpoint path from an explicit file path or `weight/manifest.json`.
+
+    Args:
+        checkpoint: Direct path to a `.pt` file, or `None` to resolve via `model_version`.
+        model_version: Semantic version tag (e.g. `"v1.0.0"`). Defaults to `default_version`
+            in `weight/manifest.json` if omitted.
+        weight_dir: Directory containing `manifest.json` and versioned `.pt` files.
+
+    Returns:
+        Resolved `Path` to the `.pt` checkpoint file.
+    """
+    if checkpoint is not None:
+        cand = Path(checkpoint)
+        if cand.exists():
+            return cand
+
+    w_dir = Path(weight_dir)
+    manifest_path = w_dir / "manifest.json"
+    ver = model_version
+    if manifest_path.exists():
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        if not ver:
+            ver = str(manifest.get("default_version", "v1.0.0"))
+        if not ver.startswith("v"):
+            ver = f"v{ver}"
+        entry = manifest.get("models", {}).get(ver, {})
+        fname = entry.get("filename", f"segformer-mitb2-gse64-{ver}.pt")
+        target = w_dir / fname
+        if target.exists():
+            return target
+
+    ver = ver or "v1.0.0"
+    if not ver.startswith("v"):
+        ver = f"v{ver}"
+    fallback = w_dir / f"segformer-mitb2-gse64-{ver}.pt"
+    if fallback.exists():
+        return fallback
+
+    pt_files = sorted(w_dir.glob("*.pt"), key=lambda p: p.stat().st_mtime, reverse=True)
+    if pt_files:
+        return pt_files[0]
+
+    raise FileNotFoundError(
+        f"Checkpoint tidak ditemukan di `{w_dir}` untuk versi `{ver}`. "
+        f"Taruh file `.pt` di `weight/` atau jalankan: `python scripts/manage_weights.py download --version {ver}`"
+    )
+
+
 def load_versioned_checkpoint(
     path: Union[str, Path],
     device: Union[str, torch.device] = "cpu",
     pretrained_fallback: bool = False,
 ) -> Tuple[SegformerForSemanticSegmentation, Dict[str, Any]]:
-    """Load a versioned 64-channel SegFormer checkpoint and return `(model, metadata)`."""
+    """Load a versioned 64-channel SegFormer checkpoint and return `(model, metadata)`.
+
+    Supports both full versioned checkpoint dicts (`"model_state_dict"` key) and
+    raw PyTorch `state_dict` files.
+    """
     ckpt = torch.load(Path(path), map_location=device, weights_only=False)
-    backbone = ckpt.get("backbone", "nvidia/mit-b2")
-    num_classes = int(ckpt.get("num_classes", 3))
-    in_channels = int(ckpt.get("in_channels", 64))
+    if isinstance(ckpt, dict) and "model_state_dict" in ckpt:
+        state_dict = ckpt["model_state_dict"]
+        backbone = ckpt.get("backbone", "nvidia/mit-b2")
+        num_classes = int(ckpt.get("num_classes", 3))
+        in_channels = int(ckpt.get("in_channels", 64))
+        metadata = {k: v for k, v in ckpt.items() if k != "model_state_dict"}
+    elif isinstance(ckpt, dict):
+        state_dict = ckpt
+        backbone = "nvidia/mit-b2"
+        num_classes = 3
+        in_channels = 64
+        metadata = {
+            "model_version": "v1.0.0",
+            "backbone": backbone,
+            "num_classes": num_classes,
+            "in_channels": in_channels,
+        }
+    else:
+        raise ValueError(f"Unsupported checkpoint payload type: {type(ckpt).__name__}")
 
     model = build_segformer_64ch(
         model_name=backbone,
@@ -268,9 +346,8 @@ def load_versioned_checkpoint(
         in_channels=in_channels,
         pretrained=pretrained_fallback,
     )
-    model.load_state_dict(ckpt["model_state_dict"])
+    model.load_state_dict(state_dict)
     model.to(device)
     model.eval()
 
-    metadata = {k: v for k, v in ckpt.items() if k != "model_state_dict"}
     return model, metadata

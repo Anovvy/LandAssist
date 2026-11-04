@@ -53,4 +53,4 @@ This document defines the mandatory architectural, geospatial, machine learning,
 2. **Atomic & Scoped Conventional Commits:**
    - All commits **MUST** follow Conventional Commits (`feat(api):`, `feat(ml):`, `feat(db):`, `ci(devops):`, `fix(vectorize):`, `docs(readme):`) and group logically related files into atomic units.
 3. **Zero Secrets & Zero Binary Bloat in Git:**
-   - **NEVER** commit `.env` files, database credentials, API keys, raw `.tif`/`.tiff`/`.npy`/`.npz`/`.mmap` datasets, or `.pt`/`.pth`/`.safetensors` model weights to Git. Store model weights on Hugging Face Hub (`HF_MODEL_REPO`).
+   - **NEVER** commit `.env` files, database credentials, API keys, raw `.tif`/`.tiff`/`.npy`/`.npz`/`.mmap` datasets, or `.pt`/`.pth`/`.safetensors` model weights to Git. Place local `.pt` checkpoints inside `weight/` (ignored by Git), track their SHA-256 and metadata in `weight/manifest.json`, and publish binary `.pt` assets to **GitHub Releases (`Anovvy/LandAssist/releases`)** via `scripts/manage_weights.py`.

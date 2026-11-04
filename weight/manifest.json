@@ -1,0 +1,42 @@
+{
+  "schema_version": "1.0",
+  "repository": "Anovvy/LandAssist",
+  "default_version": "v1.0.0",
+  "models": {
+    "v1.0.0": {
+      "model_version": "v1.0.0",
+      "filename": "segformer-mitb2-gse64-v1.0.0.pt",
+      "release_tag": "weights-v1.0.0",
+      "download_url": "https://github.com/Anovvy/LandAssist/releases/download/weights-v1.0.0/segformer-mitb2-gse64-v1.0.0.pt",
+      "sha256": "9b4e1d86449090ebef08c0a91bbb6d52f655732cda3c9b39bc5f7c680de3a23d",
+      "size_mb": 105.22,
+      "backbone": "nvidia/mit-b2",
+      "in_channels": 64,
+      "num_classes": 3,
+      "dataset_version": "ds-v1.0-rf2-125chips",
+      "class_mapping": {
+        "0": "background",
+        "1": "industrial",
+        "2": "residential"
+      },
+      "val_metrics": {
+        "epoch": 15,
+        "train_loss": 0.303,
+        "val_loss": 0.4498,
+        "iou_background": 0.7838,
+        "iou_industrial": 0.3144,
+        "iou_residential": 0.7555,
+        "fg_mIoU": 0.535,
+        "mIoU": 0.6179
+      },
+      "test_metrics": {
+        "iou_background": 0.782,
+        "iou_industrial": 0.6282,
+        "iou_residential": 0.7156,
+        "fg_mIoU": 0.6719,
+        "mIoU": 0.7086
+      },
+      "created_at": "2026-11-04T02:53:05.726816+00:00"
+    }
+  }
+}

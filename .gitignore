@@ -39,6 +39,13 @@ build/
 ml/data/
 ml/weights/
 ml/outputs/
+weight/*.pt
+weight/*.pth
+weight/*.onnx
+weight/*.safetensors
+weight/RELEASE_NOTES_*.md
+!weight/manifest.json
+!weight/README.md
 
 # Antigravity & CI/CD Ephemeral Outputs
 pr_review_comment.md

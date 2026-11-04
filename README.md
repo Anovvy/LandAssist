@@ -74,8 +74,8 @@ LandAssist enforces strict version traceability across five pillars:
 | Pillar | Mechanism | Example |
 | :--- | :--- | :--- |
 | **1. Source Code** | Git SemVer Tags & Atomic Conventional Commits | `v0.1.0` |
-| **2. ML Weights** | Hugging Face Hub Revision Tags | `anovvy/landassist-segformer-gse64@v1.0.0` |
-| **3. Training Patches** | DVC / Immutable Manifest Checksums | `tangerang_gse64_2026Q3` |
+| **2. ML Weights** | `weight/manifest.json` (SHA-256) + GitHub Releases Assets | `Anovvy/LandAssist@weights-v1.0.0` (`weight/segformer-mitb2-gse64-v1.0.0.pt`) |
+| **3. Training Patches** | DVC / Immutable Manifest Checksums | `ds-v1.0-rf2-125chips` |
 | **4. PostGIS Predictions** | `model_version` column in `public.landuse_predictions` | `v1.0.0`, `v1.1.0-rc1` |
 | **5. API Endpoints** | URL prefix `/v1/` + `?version=` query filter | `/v1/landuse.geojson?version=v1.0.0` |
 
@@ -120,7 +120,11 @@ pytest backend/tests/ -v
 ### 4. Run End-to-End GSE Download, ML Inference, Visual QA & PostGIS Ingestion
 
 ```bash
-# 0. (Optional) Download 64-band GSE GeoTIFF for any target AOI via Earth Engine
+# 0a. Register or download versioned SegFormer weights in weight/ (via GitHub Releases)
+python scripts/manage_weights.py register --set-default
+# (or on another machine: python scripts/manage_weights.py download --version v1.0.0)
+
+# 0b. (Optional) Download 64-band GSE GeoTIFF for any target AOI via Earth Engine
 python -m ml.src.download_gse \
   --bbox "106.45,-6.30,106.60,-6.15" \
   --year 2025 \
@@ -128,7 +132,7 @@ python -m ml.src.download_gse \
 
 # 1. Sliding-window inference with 2D Hann blending & disk memmap
 python -m ml.src.infer_tangerang \
-  --checkpoint weights/segformer-mitb2-gse64-v1.0.0.pt \
+  --checkpoint weight/segformer-mitb2-gse64-v1.0.0.pt \
   --input-tif data/tangerang_gse_64band.tif \
   --temp-dir ./tmp_mmap
 

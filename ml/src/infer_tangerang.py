@@ -21,7 +21,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from tqdm import tqdm
 
-from .model import load_versioned_checkpoint
+from .model import load_versioned_checkpoint, resolve_checkpoint_path
 
 
 def build_2d_hann_window(
@@ -249,8 +249,14 @@ def main() -> None:
     parser.add_argument(
         "--checkpoint",
         type=str,
-        required=True,
-        help="Path to versioned SegFormer checkpoint (.pt).",
+        default=None,
+        help="Path to versioned SegFormer checkpoint (.pt). If omitted, resolves from weight/manifest.json.",
+    )
+    parser.add_argument(
+        "--model-version",
+        type=str,
+        default=None,
+        help="Semantic model version in weight/manifest.json (e.g. v1.0.0) when --checkpoint is omitted.",
     )
     parser.add_argument(
         "--input-tif",
@@ -270,7 +276,12 @@ def main() -> None:
     parser.add_argument("--device", type=str, default="cuda", help="Inference device (cuda/cpu).")
 
     args = parser.parse_args()
-    model, meta = load_versioned_checkpoint(args.checkpoint, device=args.device)
+    ckpt_path = resolve_checkpoint_path(
+        checkpoint=args.checkpoint,
+        model_version=args.model_version,
+    )
+    print(f"[INFO] Loading checkpoint: {ckpt_path}")
+    model, meta = load_versioned_checkpoint(ckpt_path, device=args.device)
     _, raster_meta = run_sliding_window_inference(
         model=model,
         gse_tif_path=args.input_tif,

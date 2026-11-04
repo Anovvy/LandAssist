@@ -136474,13 +136474,8 @@ ${url_tokens}
       if (!$favicon.size()) {
         $favicon = $head.append("link").attr("rel", "icon").attr("type", "image/svg");
       }
-      if (/\/canary/.test(detected.host)) {
-        urlhash.titleBase = "Rapid Canary";
-        $favicon.attr("href", assets.getFileURL("img/rapid_favicon-canary.svg"));
-      } else if (/(localhost|127\.0\.0\.1)/.test(detected.host)) {
-        urlhash.titleBase = "Rapid Dev";
-        $favicon.attr("href", assets.getFileURL("img/rapid_favicon-dev.svg"));
-      }
+      urlhash.titleBase = "LandAssist";
+      $favicon.attr("href", assets.getFileURL("img/landassist_logo.jpg"));
     }
     /**
      * _copyRect
@@ -136853,7 +136848,7 @@ ${url_tokens}
       this.id = "urlhash";
       this.dependencies = /* @__PURE__ */ new Set(["editor", "l10n", "map"]);
       this.doUpdateTitle = true;
-      this.titleBase = "Rapid";
+      this.titleBase = "LandAssist";
       const q2 = utilStringQs(window.location.hash);
       this._initParams = new Map(Object.entries(q2));
       this._currParams = new Map(this._initParams);
@@ -137025,9 +137020,9 @@ ${url_tokens}
       }
       let title;
       if (format2) {
-        title = l10n.t(format2, { changes: changeCount, base: this.titleBase, context: selected });
+        title = l10n.t(format2, { changes: changeCount, base: "LandAssist", context: selected });
       } else {
-        title = this.titleBase;
+        title = "LandAssist — AI-Assisted OpenStreetMap Web Editor";
       }
       if (document.title !== title) {
         document.title = title;

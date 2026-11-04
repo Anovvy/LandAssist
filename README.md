@@ -2,7 +2,7 @@
   <img src="docs/assets/landassist_logo.jpg" alt="LandAssist Logo" width="550"/>
 </p>
 
-<h1 align="center">LandAssist 🛰️🗺️</h1>
+<h1 align="center">LandAssist</h1>
 
 <p align="center">
   <strong>AI-Assisted Earth Observation & Vector Delivery System for OpenStreetMap Web Editor</strong><br>
@@ -21,34 +21,34 @@
 
 ---
 
-## ⚡ Direct Access: Live Cloud Services
+## Direct Access: Live Cloud Services
 
-LandAssist is deployed 24/7 on high-availability cloud infrastructure (Singapore Region) backed by Supabase PostGIS spatial clusters. **No local installation, Python environment, or hardware setup is required** to explore the data or map with the AI:
+LandAssist is deployed 24/7 on high-availability cloud infrastructure (Singapore Region) backed by Supabase PostGIS spatial clusters. Live cloud endpoints and interactive interfaces:
 
 | Service | Access Link | Description |
 | :--- | :--- | :--- |
-| 🛰️ **LandAssist Web Editor** | **[Launch Web Editor](https://landassist-api.onrender.com/editor/#map=14.50/-6.2200/106.5000)** | Full standalone browser-based OpenStreetMap studio centered on Kabupaten Tangerang with active AI layers & changeset staging. |
-| 🗺️ **Visual Satellite QA Viewer** | **[Open Visual QA Map](https://landassist-api.onrender.com/qa)** | Fullscreen Leaflet viewer with high-resolution Google Satellite imagery and vector overlay inspections. |
-| 📖 **Interactive API Documentation** | **[Open Swagger / OpenAPI](https://landassist-api.onrender.com/docs)** | Interactive Swagger UI console to query and test spatial endpoints directly from your browser. |
-| 📡 **Live GeoJSON Spatial Stream** | **[GET /v1/landuse.geojson](https://landassist-api.onrender.com/v1/landuse.geojson)** | Production FeatureCollection with OSM-compliant tags ready for QGIS, ArcGIS, and external map clients. |
-| 🩺 **System & Database Health Probe** | **[GET /healthz](https://landassist-api.onrender.com/healthz)** | Real-time liveness and database connection status probe (`status: ok`, model: `v1.0.0`). |
+| **LandAssist Web Editor** | **[Launch Web Editor](https://landassist-api.onrender.com/editor/#map=14.50/-6.2200/106.5000)** | Standalone browser-based OpenStreetMap studio centered on Kabupaten Tangerang with active AI layers & changeset staging. |
+| **Visual Satellite QA Viewer** | **[Open Visual QA Map](https://landassist-api.onrender.com/qa)** | Fullscreen Leaflet viewer with high-resolution Google Satellite imagery and vector overlay inspections. |
+| **Interactive API Documentation** | **[Open Swagger / OpenAPI](https://landassist-api.onrender.com/docs)** | Interactive Swagger UI console to query and test spatial endpoints directly from your browser. |
+| **Live GeoJSON Spatial Stream** | **[GET /v1/landuse.geojson](https://landassist-api.onrender.com/v1/landuse.geojson)** | Production FeatureCollection with OSM-compliant tags ready for GIS and web map clients. |
+| **System & Database Health Probe** | **[GET /healthz](https://landassist-api.onrender.com/healthz)** | Real-time liveness and database connection status probe (`status: ok`, model: `v1.0.0`). |
 
 ---
 
-## 📖 Executive Overview
+## Executive Overview
 
 **LandAssist** bridges 10-meter satellite Earth Observation and community-driven OpenStreetMap (OSM) mapping. Utilizing **64-channel Google Satellite Embeddings (GSE)** synthesized from Sentinel-2 Level-2A time-series multispectral imagery, LandAssist classifies **Industrial (`landuse=industrial`)** and **Residential (`landuse=residential`)** parcels across **Kabupaten Tangerang, Indonesia** (~30 km × 30 km AOI).
 
-Raw raster predictions are converted into cartographically clean, topology-validated GIS polygons and streamed directly into **LandAssist Web Editor** (built-in standalone OSM web editor at `/editor`) and external GIS clients for human-in-the-loop verification.
+Raw raster predictions are converted into cartographically clean, topology-validated GIS polygons and streamed directly into **LandAssist Web Editor** (built-in standalone OSM web editor at `/editor`) for human-in-the-loop verification.
 
 > [!IMPORTANT]
 > **Human-in-the-Loop Philosophy:** LandAssist strictly rejects automated bulk imports into OpenStreetMap. Every AI-generated polygon is served as an assistive reference layer in **LandAssist Web Editor**, empowering human mappers to review, edit, and approve each boundary before committing changesets to the global OSM database.
 
 ---
 
-## 🗺️ How to Use LandAssist Web Editor
+## How to Use LandAssist Web Editor
 
-The **LandAssist Web Editor** is an interactive, browser-based OpenStreetMap editing studio powered by a heavily customized iD / Rapid open-source mapping engine.
+The **LandAssist Web Editor** is an interactive, browser-based OpenStreetMap editing studio powered by a customized iD / Rapid open-source mapping engine.
 
 ### Step 1: Open the Live Editor
 Visit **[https://landassist-api.onrender.com/editor/](https://landassist-api.onrender.com/editor/#map=14.50/-6.2200/106.5000)**. The map automatically loads the high-resolution satellite imagery basemap centered on Kabupaten Tangerang (`106.50, -6.22` at zoom level 14.5) with AI predictions pre-loaded.
@@ -57,9 +57,9 @@ Visit **[https://landassist-api.onrender.com/editor/](https://landassist-api.onr
 In the top toolbar, click the **LandAssist (AI Assist)** button:
 - Toggle **Landuse Predictions (SegFormer AI)** on or off.
 - Visual inspection legends:
-  - 🏭 **Industrial Area**: Rendered with **Gold Amber (`#F59E0B`)** high-visibility boundaries.
-  - 🏡 **Residential Area**: Rendered with **Emerald Green (`#10B981`)** boundaries.
-- Click **📍 Focus AOI (Kabupaten Tangerang)** anytime to re-center the canvas on the pilot corridor.
+  - **Industrial Area**: Rendered with **Gold Amber (`#F59E0B`)** high-visibility boundaries.
+  - **Residential Area**: Rendered with **Emerald Green (`#10B981`)** boundaries.
+- Click **Focus AOI (Kabupaten Tangerang)** anytime to re-center the canvas on the pilot corridor.
 
 ### Step 3: Inspect & Stage Features into OpenStreetMap
 1. **Click any AI Polygon** on the map to open the **LandAssist AI Inspector card** on the left sidebar:
@@ -75,7 +75,7 @@ In the top toolbar, click the **LandAssist (AI Assist)** button:
      ```
    - The polygon dynamically assumes native iD editor preset styling (amber for residential, purple for industrial).
    - The edit is committed to the local history stack, and the top-right **Save** button counter immediately increments (`1`, `2`, ...).
-3. If an AI detection is inaccurate, simply click **`- Ignore Feature`** to dismiss it from your mapping session.
+3. If an AI detection is inaccurate, click **`- Ignore Feature`** to dismiss it from your mapping session.
 
 ### Step 4: Commit Changeset to OpenStreetMap
 Click the top-right **Save** button to open the standard OSM Changeset panel:
@@ -85,28 +85,7 @@ Click the top-right **Save** button to open the standard OSM Changeset panel:
 
 ---
 
-## 🌐 External GIS & Public Rapid Editor Integration
-
-You can consume the live LandAssist spatial stream directly inside external GIS platforms without cloning this repository:
-
-### 1. Public Rapid Editor ([rapideditor.org/edit](https://rapideditor.org/edit))
-1. Navigate to **[https://rapideditor.org/edit](https://rapideditor.org/edit)** and pan to **Kabupaten Tangerang** (`106.5000, -6.2200`, zoom 14+).
-2. Press `F` to open the **Map Data** panel on the right toolbar.
-3. Under **Custom Data**, click **Add Custom Data URL** and paste:
-   ```text
-   https://landassist-api.onrender.com/v1/landuse.geojson
-   ```
-4. All AI-segmented boundaries render instantly with standardized OSM tags.
-
-### 2. QGIS / ArcGIS Pro
-Add a new **GeoJSON Vector Layer** or **WFS / MVT Layer** pointing to:
-- **GeoJSON Endpoint:** `https://landassist-api.onrender.com/v1/landuse.geojson`
-- **Bounding Box Query:** `https://landassist-api.onrender.com/v1/landuse.geojson?bbox=106.40,-6.30,106.60,-6.15`
-- **Vector Tiles (MVT):** `https://landassist-api.onrender.com/v1/tiles/{z}/{x}/{y}.pbf`
-
----
-
-## 🏛️ End-to-End System Architecture
+## End-to-End System Architecture
 
 ```mermaid
 flowchart TD
@@ -142,7 +121,7 @@ flowchart TD
 
 ---
 
-## 🚀 Key Technical Highlights
+## Key Technical Highlights
 
 ### 1. 64-Band Google Satellite Embeddings (GSE)
 - Uses **64-channel deep embeddings** capturing seasonal phenology, surface texture, and multispectral reflectance rather than simple 3-band RGB imagery.
@@ -168,7 +147,7 @@ flowchart TD
 
 ---
 
-## 📡 Production API Reference
+## Production API Reference
 
 Base URL: `https://landassist-api.onrender.com`
 
@@ -184,7 +163,7 @@ Base URL: `https://landassist-api.onrender.com`
 
 ---
 
-## 🧪 Automated Testing & Quality Gate
+## Automated Testing & Quality Gate
 
 LandAssist maintains an automated CI/CD pipeline ensuring 100% test pass rate and clean code quality:
 
@@ -196,7 +175,7 @@ LandAssist maintains an automated CI/CD pipeline ensuring 100% test pass rate an
 
 ---
 
-## 🔄 Multi-Pillar Versioning & Zero-Downtime Rollback
+## Multi-Pillar Versioning & Zero-Downtime Rollback
 
 LandAssist enforces end-to-end traceability across 5 pillars:
 
@@ -215,7 +194,7 @@ When new predictions (e.g. `v1.1.0`) are ingested into PostGIS, previous `v1.0.0
 
 ---
 
-## 📁 Repository Structure
+## Repository Structure
 
 ```text
 LandAssist/
@@ -269,7 +248,7 @@ LandAssist/
 
 ---
 
-## 🤝 Dataset Annotation & Labeling Contributors
+## Dataset Annotation & Labeling Contributors
 
 We proudly acknowledge the annotation team who contributed to the ground-truth dataset annotation and labeling for LandAssist:
 
@@ -286,7 +265,7 @@ We proudly acknowledge the annotation team who contributed to the ground-truth d
 
 ---
 
-## 📜 Contributing & Licensing
+## Contributing & Licensing
 
 LandAssist is developed as an open geospatial AI research and mapping enablement platform.
 - **Code License:** Apache 2.0

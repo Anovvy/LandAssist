@@ -269,18 +269,18 @@ LandAssist/
 
 ---
 
-## 🤝 Ground-Truth Annotation & Geospatial Contributors
+## 🤝 Dataset Annotation & Labeling Contributors
 
-The machine learning models and spatial accuracy of LandAssist are grounded in meticulously curated ground-truth annotations across the industrial and residential corridors of Kabupaten Tangerang. We proudly acknowledge the core geospatial annotation team:
+We proudly acknowledge the annotation team who contributed to the ground-truth dataset annotation and labeling for LandAssist:
 
 <div align="center">
 
-| Contributor | GitHub Profile | Role & Contribution |
+| Contributor | GitHub Profile | Role |
 | :--- | :--- | :--- |
-| **Yabes** | [@Yabes09](https://github.com/Yabes09) | Ground-Truth Dataset Annotation & Parcel Verification |
-| **AFR1404** | [@AFR1404](https://github.com/AFR1404) | Ground-Truth Dataset Annotation & Multi-Class Labeling |
-| **FireLies** | [@FireLies](https://github.com/FireLies) | Ground-Truth Dataset Annotation & Boundary Delineation |
-| **Naumam** | [@naumam](https://github.com/naumam) | Ground-Truth Dataset Annotation & Quality Assurance Review |
+| **Yabes** | [@Yabes09](https://github.com/Yabes09) | Dataset Annotation & Labeling |
+| **AFR1404** | [@AFR1404](https://github.com/AFR1404) | Dataset Annotation & Labeling |
+| **FireLies** | [@FireLies](https://github.com/FireLies) | Dataset Annotation & Labeling |
+| **Naumam** | [@naumam](https://github.com/naumam) | Dataset Annotation & Labeling |
 
 </div>
 

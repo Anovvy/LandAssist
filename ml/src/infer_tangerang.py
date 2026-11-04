@@ -11,14 +11,14 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any
 
 import numpy as np
 import rasterio
-from rasterio.windows import Window
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
+from rasterio.windows import Window
+from torch import nn
 from tqdm import tqdm
 
 from .model import load_versioned_checkpoint, resolve_checkpoint_path
@@ -63,7 +63,7 @@ def _generate_tile_Grid(
     width: int,
     tile_size: int,
     overlap: int,
-) -> List[Tuple[int, int]]:
+) -> list[tuple[int, int]]:
     """Compute `(row_off, col_off)` sliding window top-left coordinates covering `(height, width)`."""
     stride = max(1, tile_size - overlap)
 
@@ -86,14 +86,14 @@ def _generate_tile_Grid(
 
 def run_sliding_window_inference(
     model: nn.Module,
-    gse_tif_path: Union[str, Path],
-    temp_dir: Union[str, Path],
+    gse_tif_path: str | Path,
+    temp_dir: str | Path,
     tile_size: int = 160,
     overlap: int = 80,
     batch_size: int = 8,
-    device: Union[str, torch.device] = "cuda",
+    device: str | torch.device = "cuda",
     num_classes: int = 3,
-) -> Tuple[np.memmap, Dict[str, Any]]:
+) -> tuple[np.memmap, dict[str, Any]]:
     """Run memory-bounded sliding-window inference over a 64-band GSE GeoTIFF.
 
     Reads windows strictly via `rasterio.windows.Window` and writes weighted
@@ -163,7 +163,7 @@ def run_sliding_window_inference(
                 leave=False,
             ):
                 batch_coords = coords[batch_start : batch_start + batch_size]
-                batch_chips: List[np.ndarray] = []
+                batch_chips: list[np.ndarray] = []
 
                 for r_off, c_off in batch_coords:
                     win = Window(
@@ -228,7 +228,7 @@ def run_sliding_window_inference(
 
         pred_sum.flush()
 
-    raster_meta: Dict[str, Any] = {
+    raster_meta: dict[str, Any] = {
         "height": height,
         "width": width,
         "count": in_channels,

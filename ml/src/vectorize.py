@@ -13,27 +13,28 @@ OpenStreetMap-ready polygons by combining:
 from __future__ import annotations
 
 import argparse
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, Dict, List, Sequence, Tuple, Union
+from typing import Any
 
 import geopandas as gpd
 import numpy as np
-from pyproj import CRS, Transformer
 import rasterio
-from rasterio.features import geometry_mask, shapes, sieve
+from pyproj import CRS, Transformer
+from rasterio.features import shapes, sieve
 from rasterio.transform import Affine
 from rasterio.windows import from_bounds
 from scipy.ndimage import gaussian_filter
-from shapely.geometry import MultiPolygon, Polygon, box, shape
+from shapely.geometry import MultiPolygon, Polygon, shape
 from shapely.ops import transform as shapely_transform
 
 from .model import CLASS_MAPPING
 
 
 def chaikin_smooth_ring(
-    coords: Sequence[Tuple[float, float]],
+    coords: Sequence[tuple[float, float]],
     iterations: int = 2,
-) -> List[Tuple[float, float]]:
+) -> list[tuple[float, float]]:
     """Apply Chaikin's corner-cutting algorithm to a closed polygon ring.
 
     Replaces sharp 90-degree 10m raster pixel staircase corners with smooth
@@ -82,7 +83,7 @@ def _smooth_single_polygon(
         return poly
 
     ext_coords = chaikin_smooth_ring(poly.exterior.coords, iterations=chaikin_iterations)
-    kept_holes: List[List[Tuple[float, float]]] = []
+    kept_holes: list[list[tuple[float, float]]] = []
     for interior in poly.interiors:
         hole_poly = Polygon(interior)
         if hole_poly.area >= min_hole_area_m2:
@@ -97,11 +98,11 @@ def _smooth_single_polygon(
 
 
 def smooth_and_simplify_polygon(
-    geom: Union[Polygon, MultiPolygon],
+    geom: Polygon | MultiPolygon,
     simplify_tol_m: float = 4.0,
     min_hole_area_m2: float = 2500.0,
     chaikin_iterations: int = 2,
-) -> Union[Polygon, MultiPolygon]:
+) -> Polygon | MultiPolygon:
     """Smooth a metric Polygon/MultiPolygon via Chaikin corner-cutting and simplify.
 
     Args:
@@ -136,7 +137,7 @@ def smooth_and_simplify_polygon(
             for part in geom.geoms
             if not part.is_empty
         ]
-        valid_parts: List[Polygon] = []
+        valid_parts: list[Polygon] = []
         for p in parts:
             if isinstance(p, Polygon) and not p.is_empty:
                 valid_parts.append(p)
@@ -156,7 +157,7 @@ def _chunked_discretize_and_smooth(
     sigma: float = 0.8,
     industrial_thresh: float = 0.38,
     residential_thresh: float = 0.45,
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray]:
     """Smooth probability map in row chunks and discretize into `{0, 1, 2}` mask."""
     _, height, width = prob_mmap.shape
     mask = np.zeros((height, width), dtype=np.uint8)
@@ -266,7 +267,7 @@ def prob_map_to_osm_polygons(
 
     height, width = sieved_mask.shape
     min_area_m2 = float(min_pixels) * 100.0
-    records: List[Dict[str, Any]] = []
+    records: list[dict[str, Any]] = []
 
     foreground_mask = sieved_mask > 0
     for geom_dict, val in shapes(sieved_mask, mask=foreground_mask, transform=transform):
@@ -340,7 +341,7 @@ def prob_map_to_osm_polygons(
 
 def export_visual_qa_html(
     gdf: gpd.GeoDataFrame,
-    html_path: Union[str, Path],
+    html_path: str | Path,
 ) -> Path:
     """Generate a standalone interactive Leaflet + Satellite QA map HTML before PostGIS ingestion."""
     out_html = Path(html_path)

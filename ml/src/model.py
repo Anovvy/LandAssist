@@ -8,28 +8,29 @@ Multiclass Foreground Dice Loss.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 import json
+from collections.abc import Sequence
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Dict, Optional, Sequence, Tuple, Union
+from typing import Any
+
+import torch
+import torch.nn.functional as F
+from torch import nn
+from transformers import SegformerConfig, SegformerForSemanticSegmentation
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 DEFAULT_WEIGHT_DIR = REPO_ROOT / "weight"
 DEFAULT_MANIFEST_PATH = DEFAULT_WEIGHT_DIR / "manifest.json"
 
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-from transformers import SegformerConfig, SegformerForSemanticSegmentation
-
-CLASS_MAPPING: Dict[int, str] = {
+CLASS_MAPPING: dict[int, str] = {
     0: "background",
     1: "industrial",
     2: "residential",
 }
 
-ID2LABEL: Dict[int, str] = dict(CLASS_MAPPING)
-LABEL2ID: Dict[str, int] = {v: k for k, v in CLASS_MAPPING.items()}
+ID2LABEL: dict[int, str] = dict(CLASS_MAPPING)
+LABEL2ID: dict[str, int] = {v: k for k, v in CLASS_MAPPING.items()}
 
 
 def _build_mit_b2_config(num_classes: int = 3) -> SegformerConfig:
@@ -92,7 +93,7 @@ def build_segformer_64ch(
     Returns:
         Configured `SegformerForSemanticSegmentation` accepting `(B, in_channels, H, W)`.
     """
-    model: Optional[SegformerForSemanticSegmentation] = None
+    model: SegformerForSemanticSegmentation | None = None
     if pretrained:
         try:
             cfg = SegformerConfig.from_pretrained(
@@ -229,11 +230,11 @@ class WeightedCEDiceLoss(nn.Module):
 
 def save_versioned_checkpoint(
     model: nn.Module,
-    path: Union[str, Path],
+    path: str | Path,
     model_version: str = "v1.0.0",
     backbone: str = "nvidia/mit-b2",
     dataset_version: str = "ds-v1.0-rf2-125chips",
-    val_metrics: Optional[Dict[str, Any]] = None,
+    val_metrics: dict[str, Any] | None = None,
     in_channels: int = 64,
     num_classes: int = 3,
 ) -> Path:
@@ -241,7 +242,7 @@ def save_versioned_checkpoint(
     out_path = Path(path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
-    payload: Dict[str, Any] = {
+    payload: dict[str, Any] = {
         "model_state_dict": model.state_dict(),
         "model_version": model_version,
         "backbone": backbone,
@@ -250,16 +251,16 @@ def save_versioned_checkpoint(
         "num_classes": num_classes,
         "class_mapping": CLASS_MAPPING,
         "val_metrics": val_metrics or {},
-        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_at": datetime.now(UTC).isoformat(),
     }
     torch.save(payload, out_path)
     return out_path
 
 
 def resolve_checkpoint_path(
-    checkpoint: Optional[Union[str, Path]] = None,
-    model_version: Optional[str] = None,
-    weight_dir: Union[str, Path] = DEFAULT_WEIGHT_DIR,
+    checkpoint: str | Path | None = None,
+    model_version: str | None = None,
+    weight_dir: str | Path = DEFAULT_WEIGHT_DIR,
 ) -> Path:
     """Resolve a `.pt` checkpoint path from an explicit file path or `weight/manifest.json`.
 
@@ -310,15 +311,21 @@ def resolve_checkpoint_path(
 
 
 def load_versioned_checkpoint(
-    path: Union[str, Path],
-    device: Union[str, torch.device] = "cpu",
+    path: str | Path,
+    device: str | torch.device = "cpu",
     pretrained_fallback: bool = False,
-) -> Tuple[SegformerForSemanticSegmentation, Dict[str, Any]]:
+) -> tuple[SegformerForSemanticSegmentation, dict[str, Any]]:
     """Load a versioned 64-channel SegFormer checkpoint and return `(model, metadata)`.
 
     Supports both full versioned checkpoint dicts (`"model_state_dict"` key) and
-    raw PyTorch `state_dict` files.
+    raw PyTorch `state_dict` files. Automatically falls back to `"cpu"` if `"cuda"`
+    is requested on a machine without an active CUDA runtime.
     """
+    if isinstance(device, str) and device.startswith("cuda") and not torch.cuda.is_available():
+        device = "cpu"
+    elif isinstance(device, torch.device) and device.type == "cuda" and not torch.cuda.is_available():
+        device = torch.device("cpu")
+
     ckpt = torch.load(Path(path), map_location=device, weights_only=False)
     if isinstance(ckpt, dict) and "model_state_dict" in ckpt:
         state_dict = ckpt["model_state_dict"]

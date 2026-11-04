@@ -16,20 +16,20 @@ and published as binary assets on GitHub Releases (`Anovvy/LandAssist`):
 from __future__ import annotations
 
 import argparse
-from datetime import datetime, timezone
 import hashlib
 import io
 import json
 import os
-from pathlib import Path
 import pickle
 import shutil
 import subprocess
 import sys
-from typing import Any
 import urllib.error
 import urllib.request
 import zipfile
+from datetime import UTC, datetime
+from pathlib import Path
+from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 WEIGHT_DIR = REPO_ROOT / "weight"
@@ -118,7 +118,7 @@ def inspect_and_normalize_checkpoint(
             },
             "val_metrics": zip_meta.get("val_metrics", {}) or {},
             "test_metrics": zip_meta.get("test_metrics", {}) or {},
-            "created_at": zip_meta.get("created_at") or datetime.now(timezone.utc).isoformat(),
+            "created_at": zip_meta.get("created_at") or datetime.now(UTC).isoformat(),
         }
 
     ckpt = torch.load(pt_path, map_location="cpu", weights_only=False)
@@ -142,7 +142,7 @@ def inspect_and_normalize_checkpoint(
             "class_mapping": {0: "background", 1: "industrial", 2: "residential"},
             "val_metrics": {},
             "test_metrics": {},
-            "created_at": datetime.now(timezone.utc).isoformat(),
+            "created_at": datetime.now(UTC).isoformat(),
         }
         modified = True
     else:
@@ -165,7 +165,7 @@ def inspect_and_normalize_checkpoint(
         },
         "val_metrics": ckpt.get("val_metrics", {}) or {},
         "test_metrics": ckpt.get("test_metrics", {}) or {},
-        "created_at": ckpt.get("created_at") or datetime.now(timezone.utc).isoformat(),
+        "created_at": ckpt.get("created_at") or datetime.now(UTC).isoformat(),
     }
 
 

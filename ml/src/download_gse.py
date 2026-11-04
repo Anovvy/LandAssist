@@ -14,49 +14,109 @@ import datetime
 import json
 import os
 import shutil
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, List, Optional, Sequence, Tuple, Union
+from typing import Any
 
 import numpy as np
 import rasterio
 import requests
 from tqdm import tqdm
 
+REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+
+
+def _load_dotenv_if_present(env_path: Path) -> None:
+    """Parse key=value pairs from a `.env` file into `os.environ` without external deps."""
+    if not env_path.exists():
+        return
+    for raw_line in env_path.read_text(encoding="utf-8", errors="ignore").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, val = line.split("=", 1)
+        key = key.strip()
+        val = val.strip().strip("'").strip('"')
+        if key and key not in os.environ:
+            os.environ[key] = val
+
 
 def init_earth_engine(
-    project_id: Optional[str] = None,
-    service_account_key: Optional[str] = None,
+    project_id: str | None = None,
+    service_account_key: str | None = None,
+    auto_authenticate: bool = True,
 ) -> None:
-    """Authenticate and initialize the Google Earth Engine Python client."""
+    """Zero-Config Google Earth Engine Auto-Connector.
+
+    Automatically resolves Earth Engine credentials in the following priority order:
+    1. Explicit `--service-account-key` or `$EE_SERVICE_ACCOUNT_KEY` JSON file.
+    2. Local `credentials.json` / `service_account.json` in `LandAssist` root or
+       sibling data-prep repositories (`../LandAssist Data Prep/credentials.json`,
+       `../GeoChip/credentials.json`).
+    3. Cached OAuth token at `~/.config/earthengine/credentials` + `EE_PROJECT_ID`
+       from `.env` (or sibling `.env`).
+    4. Interactive `ee.Authenticate()` browser flow if `auto_authenticate=True`.
+    """
     import ee  # type: ignore
 
+    # Load .env from LandAssist root and sibling LandAssist Data Prep if present
+    for env_cand in (
+        REPO_ROOT / ".env",
+        REPO_ROOT.parent / "LandAssist Data Prep" / ".env",
+        REPO_ROOT.parent / "GeoChip" / ".env",
+    ):
+        _load_dotenv_if_present(env_cand)
+
     proj = project_id or os.environ.get("EE_PROJECT_ID")
-    sa_path = service_account_key or os.environ.get(
-        "EE_SERVICE_ACCOUNT_KEY", "credentials.json"
+    sa_env = service_account_key or os.environ.get("EE_SERVICE_ACCOUNT_KEY")
+
+    candidate_paths: list[Path] = []
+    if sa_env:
+        candidate_paths.append(Path(sa_env))
+    candidate_paths.extend(
+        [
+            REPO_ROOT / "credentials.json",
+            REPO_ROOT / "service_account.json",
+            REPO_ROOT.parent / "LandAssist Data Prep" / "credentials.json",
+            REPO_ROOT.parent / "LandAssist Data Prep" / "service_account.json",
+            REPO_ROOT.parent / "GeoChip" / "credentials.json",
+        ]
     )
 
-    for candidate in (sa_path, "service_account.json"):
-        if candidate and os.path.exists(candidate):
-            with open(candidate, "r", encoding="utf-8") as f:
-                key_data = json.load(f)
+    for cand in candidate_paths:
+        if cand.exists() and cand.is_file():
+            key_data = json.loads(cand.read_text(encoding="utf-8"))
             client_email = key_data.get("client_email")
-            resolved_proj = key_data.get("project_id", proj)
-            creds = ee.ServiceAccountCredentials(client_email, candidate)
-            ee.Initialize(creds, project=resolved_proj)
+            resolved_proj = proj or key_data.get("project_id")
+            creds = ee.ServiceAccountCredentials(client_email, str(cand))
+            ee.Initialize(credentials=creds, project=resolved_proj)
             print(
-                f"[GEE AUTH] Service Account authenticated ({client_email}) | Project: {resolved_proj}"
+                f"[GEE AUTO-CONNECTOR] Authenticated via Service Account ({client_email}) "
+                f"| Project: {resolved_proj} | Key: {cand.name}"
             )
             return
 
-    if proj:
-        ee.Initialize(project=proj)
-        print(f"[GEE AUTH] OAuth credentials initialized | Project: {proj}")
-    else:
-        ee.Initialize()
-        print("[GEE AUTH] Default OAuth credentials initialized.")
+    try:
+        if proj:
+            ee.Initialize(project=proj)
+            print(f"[GEE AUTO-CONNECTOR] Authenticated via cached OAuth | Project: {proj}")
+        else:
+            ee.Initialize()
+            print("[GEE AUTO-CONNECTOR] Authenticated via default cached OAuth credentials.")
+        return
+    except Exception as exc:
+        if not auto_authenticate:
+            raise
+        print(f"[GEE AUTO-CONNECTOR] Cached OAuth not initialized ({exc}); launching ee.Authenticate()...")
+        ee.Authenticate()
+        if proj:
+            ee.Initialize(project=proj)
+        else:
+            ee.Initialize()
+        print("[GEE AUTO-CONNECTOR] Interactive OAuth authentication succeeded.")
 
 
-def parse_bbox_string(bbox_str: str) -> Tuple[float, float, float, float]:
+def parse_bbox_string(bbox_str: str) -> tuple[float, float, float, float]:
     """Parse `'minLon,minLat,maxLon,maxLat'` into validated WGS84 floats."""
     parts = [float(p.strip()) for p in bbox_str.split(",")]
     if len(parts) != 4:
@@ -91,10 +151,10 @@ def _stream_download(url: str, target_path: Path, desc: str) -> None:
 
 
 def download_gse_64band_geotiff(
-    output_path: Union[str, Path],
-    bbox: Tuple[float, float, float, float],
+    output_path: str | Path,
+    bbox: tuple[float, float, float, float],
     target_year: int = 2025,
-    polygon_coords: Optional[Sequence[Sequence[float]]] = None,
+    polygon_coords: Sequence[Sequence[float]] | None = None,
     force: bool = False,
 ) -> Path:
     """Download a 64-band `Float32` GSE GeoTIFF (`EPSG:4326`, 10m) via adaptive band chunking."""
@@ -127,7 +187,7 @@ def download_gse_64band_geotiff(
             f"[GSE] Year {target_year} not yet published; falling back to latest available annual GSE."
         )
 
-    all_bands: List[str] = list(gse_img.bandNames().getInfo())
+    all_bands: list[str] = list(gse_img.bandNames().getInfo())
     if len(all_bands) != 64:
         raise RuntimeError(f"Expected 64 GSE bands, got {len(all_bands)}.")
 
@@ -146,7 +206,7 @@ def download_gse_64band_geotiff(
     temp_dir.mkdir(parents=True, exist_ok=True)
     region_coords: Any = aoi_geom.coordinates().getInfo()
 
-    chunk_files: List[Path] = []
+    chunk_files: list[Path] = []
     try:
         for idx, band_subset in enumerate(chunk_ranges):
             chunk_file = temp_dir / f"chunk_{idx:03d}.tif"
@@ -166,7 +226,7 @@ def download_gse_64band_geotiff(
             )
 
         profile = None
-        arrays: List[np.ndarray] = []
+        arrays: list[np.ndarray] = []
         for cf in chunk_files:
             with rasterio.open(cf) as src:
                 if profile is None:
@@ -199,19 +259,19 @@ def download_gse_64band_geotiff(
 def main() -> None:
     """CLI entrypoint for downloading a 64-band GSE GeoTIFF for a new region."""
     parser = argparse.ArgumentParser(
-        description="Download 64-band Google Satellite Embeddings (GSE) GeoTIFF via Earth Engine."
+        description="Download 64-band Google Satellite Embeddings (GSE) GeoTIFF via Earth Engine Auto-Connector."
     )
     parser.add_argument(
         "--bbox",
         type=str,
-        required=True,
-        help="Target WGS84 bounding box: 'minLon,minLat,maxLon,maxLat' (e.g. '106.45,-6.30,106.60,-6.15').",
+        default="106.45,-6.25,106.53,-6.18",
+        help="Target WGS84 bounding box: 'minLon,minLat,maxLon,maxLat' (default: Kabupaten Tangerang Cikupa-Balaraja).",
     )
     parser.add_argument(
         "--output",
         type=str,
-        required=True,
-        help="Output 64-band GeoTIFF path (e.g. 'data/tangerang_gse64.tif').",
+        default="data/tangerang_gse_64band.tif",
+        help="Output 64-band GeoTIFF path (default: 'data/tangerang_gse_64band.tif').",
     )
     parser.add_argument(
         "--year",
@@ -226,14 +286,40 @@ def main() -> None:
         help="Google Cloud / Earth Engine Project ID (or set $EE_PROJECT_ID).",
     )
     parser.add_argument(
+        "--service-account-key",
+        type=str,
+        default=None,
+        help="Optional path to Service Account JSON key (auto-detected if omitted).",
+    )
+    parser.add_argument(
+        "--test-auth",
+        action="store_true",
+        help="Only test the Zero-Config Earth Engine Auto-Connector and exit.",
+    )
+    parser.add_argument(
         "--force",
         action="store_true",
         help="Overwrite output GeoTIFF if it already exists.",
     )
 
     args = parser.parse_args()
+    init_earth_engine(
+        project_id=args.project,
+        service_account_key=args.service_account_key,
+    )
+    if args.test_auth:
+        import ee  # type: ignore
+
+        count = int(
+            ee.ImageCollection("GOOGLE/SATELLITE_EMBEDDING/V1/ANNUAL")
+            .limit(1)
+            .size()
+            .getInfo()
+        )
+        print(f"[GEE AUTO-CONNECTOR] Catalog check passed (sample count={count}). Ready!")
+        return
+
     bbox_tuple = parse_bbox_string(args.bbox)
-    init_earth_engine(project_id=args.project)
     download_gse_64band_geotiff(
         output_path=args.output,
         bbox=bbox_tuple,

@@ -2,6 +2,10 @@
 
 __version__ = "0.1.0"
 
+from .infer_tangerang import (
+    build_2d_hann_window,
+    run_sliding_window_inference,
+)
 from .model import (
     CLASS_MAPPING,
     ID2LABEL,
@@ -11,10 +15,6 @@ from .model import (
     load_versioned_checkpoint,
     save_versioned_checkpoint,
 )
-from .infer_tangerang import (
-    build_2d_hann_window,
-    run_sliding_window_inference,
-)
 from .vectorize import (
     chaikin_smooth_ring,
     prob_map_to_osm_polygons,
@@ -22,17 +22,17 @@ from .vectorize import (
 )
 
 __all__ = [
-    "__version__",
     "CLASS_MAPPING",
     "ID2LABEL",
     "LABEL2ID",
     "WeightedCEDiceLoss",
-    "build_segformer_64ch",
-    "save_versioned_checkpoint",
-    "load_versioned_checkpoint",
+    "__version__",
     "build_2d_hann_window",
-    "run_sliding_window_inference",
+    "build_segformer_64ch",
     "chaikin_smooth_ring",
-    "smooth_and_simplify_polygon",
+    "load_versioned_checkpoint",
     "prob_map_to_osm_polygons",
+    "run_sliding_window_inference",
+    "save_versioned_checkpoint",
+    "smooth_and_simplify_polygon",
 ]

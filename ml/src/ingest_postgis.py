@@ -10,13 +10,11 @@ from __future__ import annotations
 import argparse
 import os
 from pathlib import Path
-from typing import Union
 
 import geopandas as gpd
 from shapely.geometry import MultiPolygon, Polygon
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
-
 
 DDL_STATEMENTS = [
     "CREATE EXTENSION IF NOT EXISTS postgis;",
@@ -44,7 +42,7 @@ DDL_STATEMENTS = [
 ]
 
 
-def _promote_to_multipolygon(geom: Union[Polygon, MultiPolygon]) -> MultiPolygon:
+def _promote_to_multipolygon(geom: Polygon | MultiPolygon) -> MultiPolygon:
     """Ensure geometry is a `MultiPolygon` for strict PostGIS schema compatibility."""
     if isinstance(geom, Polygon):
         return MultiPolygon([geom])
@@ -137,7 +135,7 @@ def ingest_gdf_to_postgis(
 
 
 def ingest_geojson_to_postgis(
-    geojson_path: Union[str, Path],
+    geojson_path: str | Path,
     db_url: str,
     model_version: str = "v1.0.0",
     replace_version: bool = True,

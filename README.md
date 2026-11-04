@@ -147,6 +147,32 @@ flowchart TD
 
 ---
 
+## Project Limitations & Scope
+
+To ensure transparent application and scientific rigor, the operational boundaries and technical constraints of LandAssist are outlined below:
+
+### 1. Spatial Resolution and Object Scale (10m GSD)
+- LandAssist utilizes 64-channel Google Satellite Embeddings derived from Sentinel-2 Level-2A multispectral imagery at a 10-meter ground sampling distance (1 pixel = 100 m²).
+- The pipeline is designed for macro- and meso-scale land-use zoning (`landuse=residential` and `landuse=industrial`), not for micro-scale individual building footprint extraction (`building=yes`) or narrow pedestrian corridors (< 10m).
+
+### 2. Semantic Class Granularity (Dual-Class Focus)
+- The model (v1.0.0) is trained specifically to distinguish between industrial complexes and residential clusters against background terrain.
+- Mixed-use zones (e.g., commercial shophouses along major transit arteries), dedicated commercial centers, agricultural land (paddy fields), and coastal aquaculture ponds are currently grouped into the background class. Future model iterations will expand to additional OpenStreetMap land-use categories.
+
+### 3. Geographic Generalization and Spatial Transferability
+- Ground-truth training data (125 chips) is localized to the industrial-residential corridor of Kabupaten Tangerang, Banten (~30 km × 30 km).
+- While the model exhibits high fidelity on West Java suburban morphology and roofing profiles (corrugated metal, zinc, red tile), running direct inference on topographically dissimilar terrains (e.g., mountainous highlands or arid regions) without local fine-tuning may experience domain shift and reduced precision.
+
+### 4. Cartographic Boundary Characteristics
+- Vectorization incorporates GDAL sieve filtering with a Minimum Mapping Unit (MMU) of 16 pixels (1,600 m²) and two iterations of Chaikin corner-cutting smoothing.
+- Resulting vector boundaries possess smooth, organic cartographic curvature rather than sharp 90-degree cadastral lot angles. Mappers should treat boundaries as generalized parcel zones rather than legal cadastral property lines.
+
+### 5. Satellite Temporal Compositing
+- Remote sensing inputs rely on seasonal cloud-free composite mosaics aggregated in Google Earth Engine.
+- Very recent land-cover transitions (such as ground clearing or construction initiated within the last few weeks) may not be immediately reflected until subsequent composite mosaic updates are processed.
+
+---
+
 ## Production API Reference
 
 Base URL: `https://landassist-api.onrender.com`

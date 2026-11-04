@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+from pathlib import Path
 from typing import Any
 
 import asyncpg
@@ -11,6 +12,8 @@ import asyncpg
 from app.config import settings
 
 logger = logging.getLogger(__name__)
+REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+LOCAL_GEOJSON_PATH = REPO_ROOT / "outputs" / "tangerang_v1.0.0.geojson"
 
 # Built-in realistic demo polygons for Kabupaten Tangerang (EPSG:4326)
 # Enables zero-config CI testing, local development, and offline Rapid Editor demos
@@ -110,6 +113,60 @@ DEMO_FEATURES: list[dict[str, Any]] = [
 ]
 
 
+def _compute_geometry_bbox(geom: dict[str, Any]) -> tuple[float, float, float, float]:
+    """Compute `(min_lon, min_lat, max_lon, max_lat)` for a Polygon or MultiPolygon GeoJSON dict."""
+    lons: list[float] = []
+    lats: list[float] = []
+    gtype = geom.get("type")
+    coords = geom.get("coordinates", [])
+    if gtype == "Polygon":
+        for ring in coords:
+            for pt in ring:
+                lons.append(float(pt[0]))
+                lats.append(float(pt[1]))
+    elif gtype == "MultiPolygon":
+        for poly in coords:
+            for ring in poly:
+                for pt in ring:
+                    lons.append(float(pt[0]))
+                    lats.append(float(pt[1]))
+    if not lons or not lats:
+        return (106.45, -6.25, 106.55, -6.18)
+    return (min(lons), min(lats), max(lons), max(lats))
+
+
+def _load_local_tangerang_features() -> list[dict[str, Any]]:
+    """Load real vectorized Kabupaten Tangerang polygons from `outputs/tangerang_v1.0.0.geojson` if present."""
+    if not LOCAL_GEOJSON_PATH.exists():
+        return []
+    try:
+        raw = json.loads(LOCAL_GEOJSON_PATH.read_text(encoding="utf-8"))
+        loaded: list[dict[str, Any]] = []
+        for idx, feat in enumerate(raw.get("features", []), start=1000):
+            props = feat.get("properties", {})
+            geom = feat.get("geometry", {})
+            if not geom:
+                continue
+            loaded.append(
+                {
+                    "id": idx,
+                    "landuse_class": str(props.get("landuse", "residential")),
+                    "confidence": float(props.get("la:confidence", 0.75)),
+                    "area_m2": float(props.get("area_m2", 1600.0)),
+                    "model_version": str(props.get("la:version", "v1.0.0")),
+                    "aoi_source": "kab_tangerang_2025",
+                    "bbox": _compute_geometry_bbox(geom),
+                    "geometry": geom,
+                }
+            )
+        return loaded
+    except (OSError, ValueError, KeyError):
+        return []
+
+
+DEMO_FEATURES.extend(_load_local_tangerang_features())
+
+
 class DatabaseManager:
     """Manages the asyncpg connection pool and executes spatial PostGIS queries."""
 
@@ -124,7 +181,7 @@ class DatabaseManager:
         """Initialize the PostGIS connection pool if DATABASE_URL is configured."""
         if not settings.database_url:
             logger.info(
-                "No DATABASE_URL configured; running in demo_fallback mode with Kabupaten Tangerang sample polygons."
+                "No DATABASE_URL configured; running in demo_fallback mode with Kabupaten Tangerang polygons."
             )
             return
         try:
@@ -135,7 +192,7 @@ class DatabaseManager:
                 command_timeout=30.0,
             )
             logger.info("Connected to PostGIS database pool.")
-        except Exception as exc:
+        except (OSError, asyncpg.PostgresError, ValueError) as exc:
             logger.warning(
                 "Could not connect to PostGIS (%s); falling back to in-memory demo dataset.",
                 exc,

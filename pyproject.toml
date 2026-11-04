@@ -1,0 +1,19 @@
+[project]
+name = "landassist"
+version = "0.1.0"
+description = "AI-Assisted Landuse Segmentation & Vector Delivery System for OpenStreetMap Rapid Editor"
+requires-python = ">=3.11"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+extend-exclude = ["ml/notebooks"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+pythonpath = ["backend"]
+asyncio_mode = "strict"
+asyncio_default_fixture_loop_scope = "function"

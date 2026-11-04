@@ -185,11 +185,18 @@ class DatabaseManager:
             )
             return
         try:
+            pool_kwargs: dict[str, Any] = {
+                "min_size": 1,
+                "max_size": 10,
+                "command_timeout": 30.0,
+            }
+            # Supavisor transaction pooler on port 6543 requires statement_cache_size=0
+            if ":6543" in settings.database_url or "pooler.supabase.com" in settings.database_url:
+                pool_kwargs["statement_cache_size"] = 0
+
             self.pool = await asyncpg.create_pool(
                 dsn=settings.database_url,
-                min_size=1,
-                max_size=10,
-                command_timeout=30.0,
+                **pool_kwargs,
             )
             logger.info("Connected to PostGIS database pool.")
         except (OSError, asyncpg.PostgresError, ValueError) as exc:

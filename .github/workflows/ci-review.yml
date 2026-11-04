@@ -9,7 +9,7 @@ on:
       - main
 
 permissions:
-  contents: read
+  contents: write
   pull-requests: write
 
 jobs:
@@ -43,9 +43,8 @@ jobs:
           pytest backend/tests/ -v
 
   antigravity-sdk-review:
-    name: Antigravity SDK Automated PR Review
+    name: Antigravity SDK Automated Code Review
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
     needs: lint-and-test
     steps:
       - name: Checkout repository with full history
@@ -67,15 +66,46 @@ jobs:
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
-          if [ -n "$GEMINI_API_KEY" ]; then
-            python scripts/agy_code_review.py --base "origin/${{ github.base_ref }}" --head "HEAD"
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE_REF="origin/${{ github.base_ref }}"
+            HEAD_REF="HEAD"
           else
-            python scripts/agy_code_review.py --base "origin/${{ github.base_ref }}" --head "HEAD" --dry-run
+            # On direct push to main, audit latest commit diff against parent
+            BASE_REF="HEAD~1"
+            HEAD_REF="HEAD"
           fi
 
-      - name: Post Review Comment to Pull Request
+          if [ -n "$GEMINI_API_KEY" ]; then
+            python scripts/agy_code_review.py --base "$BASE_REF" --head "$HEAD_REF"
+          else
+            python scripts/agy_code_review.py --base "$BASE_REF" --head "$HEAD_REF" --dry-run
+          fi
+
+      - name: Publish Review Report to Job Summary
         if: always() && hashFiles('pr_review_comment.md') != ''
+        run: |
+          cat pr_review_comment.md >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload Review Report Artifact
+        if: always() && hashFiles('pr_review_comment.md') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: antigravity-review-report
+          path: pr_review_comment.md
+          retention-days: 7
+
+      - name: Post Review Comment to Pull Request
+        if: always() && github.event_name == 'pull_request' && hashFiles('pr_review_comment.md') != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh pr comment ${{ github.event.pull_request.number }} --body-file pr_review_comment.md
+
+      - name: Post Review Comment to Commit
+        if: always() && github.event_name == 'push' && hashFiles('pr_review_comment.md') != ''
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api "repos/${{ github.repository }}/commits/${{ github.sha }}/comments" \
+            -F body=@pr_review_comment.md || echo "Commit comment skipped or not permitted; review report is available in Job Summary."

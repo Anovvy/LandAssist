@@ -70,9 +70,30 @@ def init_earth_engine(
     proj = project_id or os.environ.get("EE_PROJECT_ID")
     sa_env = service_account_key or os.environ.get("EE_SERVICE_ACCOUNT_KEY")
 
+    # If raw JSON string was provided in the environment variable, authenticate directly
+    if sa_env and sa_env.strip().startswith("{"):
+        try:
+            key_data = json.loads(sa_env.strip())
+            client_email = key_data.get("client_email")
+            resolved_proj = proj or key_data.get("project_id")
+            creds = ee.ServiceAccountCredentials(client_email, key_data=sa_env.strip())
+            ee.Initialize(credentials=creds, project=resolved_proj)
+            print(
+                f"[GEE AUTO-CONNECTOR] Authenticated via Service Account JSON ({client_email}) "
+                f"| Project: {resolved_proj}"
+            )
+            return
+        except Exception as exc:
+            print(f"[GEE AUTO-CONNECTOR] Failed to parse raw JSON key from environment: {exc}")
+
     candidate_paths: list[Path] = []
     if sa_env:
-        candidate_paths.append(Path(sa_env))
+        try:
+            p = Path(sa_env)
+            if p.exists() and p.is_file():
+                candidate_paths.append(p)
+        except OSError:
+            pass
     candidate_paths.extend(
         [
             REPO_ROOT / "credentials.json",

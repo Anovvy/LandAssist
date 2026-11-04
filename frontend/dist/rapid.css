@@ -7365,3 +7365,14 @@ hide this one and style something on top of it.  */
   margin: 4px;
   border-radius: 5px;
 }
+
+.ideditor button.rapid-features .landassist-btn-brand {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 100%;
+}
+.ideditor button.rapid-features.layer-off .landassist-btn-brand {
+  opacity: 0.45;
+  filter: grayscale(80%);
+}

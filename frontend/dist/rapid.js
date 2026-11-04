@@ -117144,10 +117144,16 @@ ${e3}`);
         return graph;
       });
 
+      const editAnnotation = "Added " + (cleanClass === "industrial" ? "Industrial Area" : "Residential Area") + " from LandAssist AI";
+      editorSystem.commit({
+        annotation: editAnnotation,
+        selectedIDs: [way.id]
+      });
+
       // Remove datum from custom data layer so it ceases to be an unaccepted AI overlay
       try {
-        const scene = context2.scene && context2.scene();
-        const customDataLayer = scene && scene.layers && scene.layers.get("custom-data");
+        const scene = context2.scene ? context2.scene() : context2.systems?.gfx?.scene;
+        const customDataLayer = scene?.layers?.get("custom-data");
         if (customDataLayer && customDataLayer._geojson && customDataLayer._geojson.features) {
           customDataLayer._geojson.features = customDataLayer._geojson.features.filter(function(f) {
             return f !== _datum && f.id !== _datum.id;
@@ -117163,8 +117169,8 @@ ${e3}`);
 
     function ignoreFeature() {
       try {
-        const scene = context2.scene && context2.scene();
-        const customDataLayer = scene && scene.layers && scene.layers.get("custom-data");
+        const scene = context2.scene ? context2.scene() : context2.systems?.gfx?.scene;
+        const customDataLayer = scene?.layers?.get("custom-data");
         if (customDataLayer && customDataLayer._geojson && customDataLayer._geojson.features) {
           customDataLayer._geojson.features = customDataLayer._geojson.features.filter(function(f) {
             return f !== _datum && f.id !== _datum.id;
@@ -132496,7 +132502,7 @@ ${url_tokens}
       $$toggleAllLabel.append("div").attr("class", "rapid-checkbox-custom");
       $toggleAll = $toggleAll.merge($$toggleAll);
       $toggleAll.selectAll(".rapid-feature-label").html(l10n.t("rapid_menu.toggle_all", {
-        rapidicon: icon(`#rapid-logo-rapid-wordmark${rtl}`, "logo-rapid")
+        rapidicon: '<span style="color:#0284c7;font-weight:800;display:inline-flex;align-items:center;gap:6px;"><img src="img/landassist_logo.jpg" style="width:16px;height:16px;border-radius:3px;vertical-align:middle;display:inline-block;" /> LandAssist AI</span>'
       }));
       const toggleKey = utilCmd("\u21E7" + l10n.t("shortcuts.command.toggle_rapid_data.key"));
       $toggleAll.selectAll(".rapid-feature-hotkey").text("(" + toggleKey + ")");
@@ -132915,16 +132921,17 @@ ${url_tokens}
       const isPowerUser = urlhash.getParam("poweruser") === "true";
       const isNarrow = $container.selectAll(".map-toolbar.narrow").size();
       const rtl = l10n.isRTL() ? "-rtl" : "";
-      this.RapidTooltip.placement("bottom").scrollContainer($container.select(".map-toolbar")).title(l10n.t("shortcuts.command.toggle_rapid_data.label")).shortcut(utilCmd("\u21E7" + l10n.t("shortcuts.command.toggle_rapid_data.key")));
+      this.RapidTooltip.placement("bottom").scrollContainer($container.select(".map-toolbar")).title("LandAssist AI Datasets").shortcut(utilCmd("\u21E7" + l10n.t("shortcuts.command.toggle_rapid_data.key")));
       this.PowerUserTooltip.placement("bottom").scrollContainer($container.select(".map-toolbar")).title(l10n.t("rapid_poweruser.heading.label"));
       let $joined = $parent.selectAll(".joined").data([0]);
       const $$joined = $joined.enter().append("div").attr("class", "joined").style("display", "flex");
       $joined = $joined.merge($$joined);
       let $rapidButton = $joined.selectAll("button.rapid-features").data([this.RapidModal]);
       let $$rapidButton = $rapidButton.enter().append("button").attr("class", "bar-button rapid-features").on("click", this.choose).call(this.RapidTooltip);
-      $$rapidButton.append("svg").attr("class", "logo-rapid").append("use");
+      let $brand = $$rapidButton.append("div").attr("class", "landassist-btn-brand").style("display", "flex").style("align-items", "center").style("gap", "6px").style("padding", "0 2px");
+      $brand.append("img").attr("src", "img/landassist_logo.jpg").attr("alt", "LandAssist").style("width", "18px").style("height", "18px").style("object-fit", "cover").style("border-radius", "4px").style("box-shadow", "0 1px 3px rgba(0,0,0,0.3)");
+      $brand.append("span").attr("class", "label").style("font-weight", "800").style("font-size", "13.5px").style("color", "#0284c7").style("letter-spacing", "-0.01em").text("LandAssist");
       $rapidButton = $rapidButton.merge($$rapidButton).classed("layer-off", !this.isLayerEnabled());
-      $rapidButton.selectAll(".logo-rapid use").attr("xlink:href", isNarrow ? `#rapid-logo-rapid${rtl}` : `#rapid-logo-rapid-wordmark${rtl}`);
       let $poweruserButton = $joined.selectAll("button.rapid-poweruser-features").data(isPowerUser ? [this.PowerUserModal] : []);
       $poweruserButton.exit().remove();
       $poweruserButton.enter().append("button").attr("class", "bar-button rapid-poweruser-features").on("click", this.choose).call(this.PowerUserTooltip).append("div").attr("class", "beta");
@@ -133204,7 +133211,7 @@ ${url_tokens}
       $items.selectAll(".item-content").each((d2, i3, nodes) => {
         select_default2(nodes[i3]).call(d2.render);
       });
-      $items.selectAll(".item-label").text((d2) => l10n.t(d2.stringID));
+      $items.selectAll(".item-label").text((d2) => (d2.id === "rapid_features" ? "AI Assist" : l10n.t(d2.stringID)));
       ui.checkOverflow(".map-toolbar", true);
     }
   };

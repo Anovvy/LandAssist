@@ -37,6 +37,8 @@ jobs:
           ruff check backend/ ml/src/ scripts/
 
       - name: Run FastAPI & PostGIS Endpoint Unit Tests
+        env:
+          PYTHONPATH: backend
         run: |
           pytest backend/tests/ -v
 

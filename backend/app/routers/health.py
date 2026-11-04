@@ -12,6 +12,10 @@ from app.db import db
 router = APIRouter(tags=["health & versions"])
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 QA_HTML_PATH = REPO_ROOT / "outputs" / "tangerang_v1.0.0_qa.html"
+if not QA_HTML_PATH.exists():
+    _app_qa = Path(__file__).resolve().parent.parent.parent / "outputs" / "tangerang_v1.0.0_qa.html"
+    if _app_qa.exists():
+        QA_HTML_PATH = _app_qa
 
 
 @router.get("/healthz")

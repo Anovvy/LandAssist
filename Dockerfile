@@ -13,6 +13,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
 
 COPY backend/app ./app
 COPY frontend/dist ./frontend/dist
+COPY outputs ./outputs
 
 RUN chown -R landassist:landassist /app
 

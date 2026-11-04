@@ -312,6 +312,10 @@ def prob_map_to_osm_polygons(
             continue
 
         geom_wgs84 = shapely_transform(to_wgs84, smoothed_utm)
+        if not geom_wgs84.is_valid:
+            geom_wgs84 = geom_wgs84.buffer(0)
+        if geom_wgs84.is_empty:
+            continue
         records.append(
             {
                 "landuse": CLASS_MAPPING[class_id],

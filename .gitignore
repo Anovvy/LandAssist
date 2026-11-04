@@ -56,7 +56,9 @@ pr_review_comment.md
 *.log
 docs/DEEP_DIVE_MENTOR_GUIDE.md
 tmp_mmap*/
-outputs/
+outputs/*
+!outputs/tangerang_v1.0.0.geojson
+!outputs/tangerang_v1.0.0_qa.html
 /data/
 weights/
 

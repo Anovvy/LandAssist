@@ -117194,7 +117194,7 @@ ${e3}`);
       const rawProps = (_datum && _datum.properties) || {};
       const landuseVal = (rawProps.landuse || rawProps.landuse_class || "residential").toLowerCase();
       const isInd = (landuseVal === "industrial");
-      const badgeText = isInd ? "🏭 Kawasan Industri (Industrial)" : "🏡 Kawasan Pemukiman (Residential)";
+      const badgeText = isInd ? "🏭 Industrial Area" : "🏡 Residential Area";
       const badgeBg = isInd ? "rgba(245, 158, 11, 0.15)" : "rgba(16, 185, 129, 0.15)";
       const badgeColor = isInd ? "#F59E0B" : "#10B981";
       const badgeBorder = isInd ? "1px solid rgba(245, 158, 11, 0.4)" : "1px solid rgba(16, 185, 129, 0.4)";
@@ -122993,7 +122993,7 @@ ${e3}`);
         curtain.reveal({
           revealSelector: ".intro-nav-wrap .chapter-rapid",
           tipHtml: helpHtml(context2, "intro.rapid.start", {
-            rapid: icon(`#rapid-logo-rapid-wordmark${rtl}`, "pre-text rapid")
+            rapid: '<span style="color:#0284c7;font-weight:bold;">LandAssist</span>'
           }),
           buttonText: l10n.t("intro.ok"),
           buttonCallback: () => resolve(showHideRoadsAsync)
@@ -123007,7 +123007,7 @@ ${e3}`);
         curtain.reveal({
           revealSelector: "button.rapid-features",
           tipHtml: helpHtml(context2, "intro.rapid.ai_roads", {
-            rapid: icon(`#rapid-logo-rapid-wordmark${rtl}`, "pre-text rapid")
+            rapid: '<span style="color:#0284c7;font-weight:bold;">LandAssist</span>'
           }),
           buttonText: l10n.t("intro.ok"),
           buttonCallback: () => resolve(selectRoadAsync)
@@ -123068,7 +123068,7 @@ ${e3}`);
         curtain.reveal({
           revealExtent: tulipLaneExtent,
           tipHtml: helpHtml(context2, "intro.rapid.add_road_not_saved_yet", {
-            rapid: icon(`#rapid-logo-rapid-wordmark${rtl}`, "pre-text rapid")
+            rapid: '<span style="color:#0284c7;font-weight:bold;">LandAssist</span>'
           }),
           buttonText: l10n.t("intro.ok"),
           buttonCallback: () => resolve(showIssuesButtonAsync)
@@ -128600,7 +128600,7 @@ ${info}
     const rtl = l10n.isRTL() ? "-rtl" : "";
     const replacements = {
       version: `**${context2.version}**`,
-      rapidicon: `<svg class="icon pre-text rapid"><use xlink:href="#rapid-logo-rapid-wordmark${rtl}"></use></svg>`
+      rapidicon: '<span style="color:#0284c7;font-weight:bold;">LandAssist</span>'
     };
     let docs = [];
     for (const [section, subsections] of docSections) {
@@ -132489,9 +132489,12 @@ ${url_tokens}
       const context2 = this.context;
       const l10n = context2.systems.l10n;
       const scene = context2.systems.gfx.scene;
-      const rtl = l10n.isRTL() ? "-rtl" : "";
-      const isRapidEnabled = scene.layers.get("rapid")?.enabled;
+      const map4 = context2.systems.map;
+      const customLayer = scene.layers.get("custom-data");
+      const isLandAssistEnabled = customLayer ? customLayer.enabled : (scene.layers.get("rapid")?.enabled ?? true);
       const $content = this.$modal.select(".content");
+
+      // 1. Master Toggle Section
       let $toggleAll = $content.selectAll(".rapid-toggle-all").data([0]);
       const $$toggleAll = $toggleAll.enter().append("div").attr("class", "modal-section rapid-checkbox rapid-toggle-all");
       const $$toggleAllText = $$toggleAll.append("div").attr("class", "rapid-feature-label-container");
@@ -132501,124 +132504,131 @@ ${url_tokens}
       $$toggleAllLabel.append("input").attr("type", "checkbox").attr("class", "rapid-feature-checkbox").on("click", this.toggleRapid);
       $$toggleAllLabel.append("div").attr("class", "rapid-checkbox-custom");
       $toggleAll = $toggleAll.merge($$toggleAll);
-      $toggleAll.selectAll(".rapid-feature-label").html(l10n.t("rapid_menu.toggle_all", {
-        rapidicon: '<span style="color:#0284c7;font-weight:800;display:inline-flex;align-items:center;gap:6px;"><img src="img/landassist_logo.jpg" style="width:16px;height:16px;border-radius:3px;vertical-align:middle;display:inline-block;" /> LandAssist AI</span>'
-      }));
+      $toggleAll.selectAll(".rapid-feature-label").html(
+        '<div style="display:flex; align-items:center; gap:8px;"><img src="img/landassist_logo.jpg" style="width:22px;height:22px;border-radius:4px;object-fit:cover;" /><strong style="font-size:15px; color:#38bdf8;">Enable LandAssist AI Layers</strong></div>'
+      );
       const toggleKey = utilCmd("\u21E7" + l10n.t("shortcuts.command.toggle_rapid_data.key"));
       $toggleAll.selectAll(".rapid-feature-hotkey").text("(" + toggleKey + ")");
-      $toggleAll.selectAll(".rapid-feature-checkbox").property("checked", isRapidEnabled);
+      $toggleAll.selectAll(".rapid-feature-checkbox").property("checked", isLandAssistEnabled);
+
+      // 2. LandAssist Datasets Container (Landuse SegFormer)
       let $datasets = $content.selectAll(".rapid-datasets-container").data([0]);
       const $$datasets = $datasets.enter().append("div").attr("class", "rapid-datasets-container");
       $datasets = $datasets.merge($$datasets);
       $datasets.call(this.renderDatasets);
-      const rapid = context2.systems.rapid;
-      const ignoredCount = rapid.ignoredGersIDs.size;
-      let $ignoredLink = $content.selectAll(".rapid-ignored-ids").data(ignoredCount > 0 ? [0] : []);
-      $ignoredLink.exit().remove();
-      const $$ignoredLink = $ignoredLink.enter().append("div").attr("class", "rapid-ignored-ids");
-      $$ignoredLink.append("a").attr("class", "rapid-ignored-ids-link").attr("href", "#").on("click", (e3) => {
-        e3.preventDefault();
-        this._showIgnoredIdsDialog();
-      });
-      $ignoredLink = $ignoredLink.merge($$ignoredLink);
-      $ignoredLink.selectAll(".rapid-ignored-ids-link").text(l10n.t(
-        ignoredCount === 1 ? "rapid_menu.ignored_ids.link_one" : "rapid_menu.ignored_ids.link",
-        { count: ignoredCount }
-      ));
+
+      // 3. Quick Action / Center Map to AOI & API Info Section
       let $manageDatasets = $content.selectAll(".rapid-manage-datasets").data([0]);
-      const $$manageDatasets = $manageDatasets.enter().append("div").attr("class", "modal-section rapid-checkbox rapid-manage-datasets").on("click", () => {
-        const CatalogModal = new UiRapidCatalog(context2, this.$modal).on("done", this.rerender);
-        context2.container().call(CatalogModal.show);
+      const $$manageDatasets = $manageDatasets.enter().append("div").attr("class", "modal-section rapid-checkbox rapid-manage-datasets").style("cursor", "pointer").on("click", () => {
+        map4.centerZoomEase([106.5000, -6.2200], 14.5);
+        this.$modal.close();
       });
-      $$manageDatasets.append("div").attr("class", "rapid-feature-label-container").append("div").attr("class", "rapid-feature-label");
-      $$manageDatasets.append("div").attr("class", "rapid-checkbox-inputs").append("div").attr("class", "rapid-checkbox-label").call(uiIcon("", "icon-30"));
+      const $$manageLabel = $$manageDatasets.append("div").attr("class", "rapid-feature-label-container");
+      $$manageLabel.append("div").attr("class", "rapid-feature-label");
+      $$manageDatasets.append("div").attr("class", "rapid-checkbox-inputs").append("div").attr("class", "rapid-checkbox-label").call(uiIcon("#rapid-icon-framed-dot", "icon-30"));
       $manageDatasets = $manageDatasets.merge($$manageDatasets);
-      $manageDatasets.selectAll(".rapid-feature-label").text(l10n.t("rapid_menu.add_manage_datasets"));
-      $manageDatasets.selectAll(".rapid-checkbox-label use").attr("xlink:href", l10n.isRTL() ? "#rapid-icon-backward" : "#rapid-icon-forward");
+      $manageDatasets.selectAll(".rapid-feature-label").html(
+        '<div style="display:flex; flex-direction:column; gap:2px;"><span style="font-size:13px; font-weight:700; color:#cbd5e1;">📍 Focus AOI (Kabupaten Tangerang)</span><span style="font-size:11px; color:#94a3b8;">Coordinates: 106.5000, -6.2200 • Zoom: 14.50</span></div>'
+      );
+
+      // 4. Action Buttons (Done / OK)
       let $buttons = $content.selectAll(".modal-section.buttons").data([0]);
       const $$buttons = $buttons.enter().append("div").attr("class", "modal-section buttons");
-      $$buttons.append("button").attr("class", "button ok-button action").on("click", () => this.$modal.close());
+      $$buttons.append("button").attr("class", "button ok-button action").style("background", "#10B981").style("color", "#ffffff").style("font-weight", "700").on("click", () => this.$modal.close());
       const buttonNode = $$buttons.selectAll("button").node();
       if (buttonNode) buttonNode.focus();
       $buttons = $buttons.merge($$buttons);
-      $buttons.selectAll(".button").text(l10n.t("confirm.okay"));
+      $buttons.selectAll(".button").text("Apply / Close");
     }
     /**
      * renderDatasets
-     * Renders the list of datasets into the `.rapid-datasets-container` div.
-     * @param {d3-selection} $selection - A d3-selection to a HTMLElement that this component should render itself into
+     * Renders LandAssist Landuse datasets into the container.
      */
     renderDatasets($selection) {
       const context2 = this.context;
-      const l10n = context2.systems.l10n;
-      const map4 = context2.systems.map;
-      const rapid = context2.systems.rapid;
       const scene = context2.systems.gfx.scene;
-      const storage = context2.systems.storage;
-      const isRapidEnabled = scene.layers.get("rapid")?.enabled;
-      const showPreview = storage.getItem("rapid-internal-feature.previewDatasets") === "true";
-      const datasets = [...rapid.datasets.values()].filter((d2) => d2.added && (showPreview || !d2.beta));
-      let $rows = $selection.selectAll(".rapid-checkbox-dataset").data(datasets, (d2) => d2.id);
-      $rows.exit().remove();
-      const $$rows = $rows.enter().append("div").attr("class", "rapid-checkbox rapid-checkbox-dataset");
-      const $$label = $$rows.append("div").attr("class", "rapid-feature");
-      const $$line1 = $$label.append("div").attr("class", "rapid-feature-label-container");
-      $$line1.append("div").attr("class", "rapid-feature-label");
-      $$line1.filter((d2) => d2.beta).append("div").attr("class", "rapid-feature-label-beta beta");
-      const $$line2 = $$label.append("div").attr("class", "rapid-feature-extent-container");
-      $$line2.each((d2, i3, nodes) => {
-        const $$extent = select_default2(nodes[i3]);
-        if (d2.extent && d2.extent.area() < 1e4) {
-          $$extent.append("a").attr("class", "rapid-feature-extent-center-map").attr("href", "#").on("click", (e3) => {
-            e3.preventDefault();
-            map4.extent(d2.extent);
-          });
-        } else {
-          $$extent.append("span").attr("class", "rapid-feature-extent-worldwide");
-        }
-      });
-      const $$license = $$line2.filter((d2) => d2.licenseUrl);
-      $$license.append("div").attr("class", "rapid-feature-label-divider");
-      const $$link = $$license.append("div").attr("class", "rapid-feature-license").append("a").attr("class", "rapid-feature-licence-link").attr("target", "_blank").attr("href", (d2) => d2.licenseUrl);
-      $$link.append("span").attr("class", "rapid-feature-license-link-text");
-      $$link.call(uiIcon("#rapid-icon-out-link", "inline"));
-      const $$inputs = $$rows.append("div").attr("class", "rapid-checkbox-inputs");
-      $$inputs.append("label").attr("class", "rapid-colorpicker-label");
-      const $$checkboxes = $$inputs.append("label").attr("class", "rapid-checkbox-label");
-      $$checkboxes.append("input").attr("type", "checkbox").attr("class", "rapid-feature-checkbox").on("click", this.toggleDataset);
-      $$checkboxes.append("div").attr("class", "rapid-checkbox-custom");
-      $rows = $rows.merge($$rows);
-      $rows.classed("disabled", !isRapidEnabled);
-      $rows.selectAll(".rapid-feature-label").text((d2) => d2.getLabel());
-      $rows.selectAll(".rapid-feature-label-beta").attr("title", l10n.t("rapid_poweruser.beta"));
-      $rows.selectAll(".rapid-feature-description").text((d2) => d2.description);
-      $rows.selectAll(".rapid-feature-license-link-text").text(l10n.t("rapid_menu.license"));
-      $rows.selectAll(".rapid-feature-extent-center-map").text(l10n.t("rapid_menu.center_map"));
-      $rows.selectAll(".rapid-feature-extent-worldwide").text(l10n.t("rapid_menu.worldwide"));
-      $rows.selectAll(".rapid-colorpicker-label").attr("disabled", isRapidEnabled ? null : true).call(this.ColorPicker);
-      $rows.selectAll(".rapid-checkbox-label").classed("disabled", !isRapidEnabled);
-      $rows.selectAll(".rapid-feature-checkbox").property("checked", (d2) => d2.enabled).attr("disabled", isRapidEnabled ? null : true);
+      const map4 = context2.systems.map;
+      const customLayer = scene.layers.get("custom-data");
+      const isLayerOn = customLayer ? customLayer.enabled : (scene.layers.get("rapid")?.enabled ?? true);
+
+      $selection.html("");
+
+      // Dataset 1: LandAssist Landuse (Sentinel-2 GSE)
+      const $row1 = $selection.append("div").attr("class", "rapid-checkbox rapid-checkbox-dataset")
+        .style("padding", "12px 14px")
+        .style("background", "rgba(15, 23, 42, 0.75)")
+        .style("border-radius", "8px")
+        .style("margin", "6px 0")
+        .style("border", "1px solid rgba(56, 189, 248, 0.25)")
+        .style("display", "flex")
+        .style("align-items", "center")
+        .style("justify-content", "space-between");
+
+      const $feat1 = $row1.append("div").attr("class", "rapid-feature").style("flex", "1 1 auto").style("padding-right", "12px");
+      
+      const $line1 = $feat1.append("div").attr("class", "rapid-feature-label-container").style("display", "flex").style("align-items", "center").style("gap", "8px");
+      $line1.append("div").style("font-weight", "800").style("font-size", "14px").style("color", "#38bdf8").text("Landuse Predictions (SegFormer AI)");
+      $line1.append("span").style("font-size", "10px").style("padding", "2px 6px").style("border-radius", "10px").style("background", "rgba(16, 185, 129, 0.2)").style("color", "#10b981").style("border", "1px solid rgba(16, 185, 129, 0.4)").style("font-weight", "600").text("Live PostGIS");
+
+      const $line2 = $feat1.append("div").style("margin-top", "4px").style("font-size", "12px").style("color", "#94a3b8");
+      $line2.text("Model SegFormer MIT-B2 (mIoU 74.2%) • Sentinel-2 GSE 64-Band");
+
+      // Swatches / Classes
+      const $legend = $feat1.append("div").style("display", "flex").style("gap", "12px").style("margin-top", "6px").style("font-size", "11px");
+      $legend.append("div").style("display", "flex").style("align-items", "center").style("gap", "5px")
+        .html('<span style="display:inline-block; width:12px; height:12px; border-radius:3px; background:#F59E0B; border:1px solid #d97706;"></span><span style="color:#cbd5e1; font-weight:600;">🏭 Industrial Area</span>');
+      $legend.append("div").style("display", "flex").style("align-items", "center").style("gap", "5px")
+        .html('<span style="display:inline-block; width:12px; height:12px; border-radius:3px; background:#10B981; border:1px solid #059669;"></span><span style="color:#cbd5e1; font-weight:600;">🏡 Residential Area</span>');
+
+      // Checkbox
+      const $inputs1 = $row1.append("div").attr("class", "rapid-checkbox-inputs").style("display", "flex").style("align-items", "center");
+      const $label1 = $inputs1.append("label").attr("class", "rapid-checkbox-label");
+      $label1.append("input").attr("type", "checkbox").attr("class", "rapid-feature-checkbox")
+        .property("checked", isLayerOn)
+        .on("click", () => {
+          this.toggleRapid();
+        });
+      $label1.append("div").attr("class", "rapid-checkbox-custom");
+
+      // Dataset 2: PostGIS Vector Tiles (MVT)
+      const $row2 = $selection.append("div").attr("class", "rapid-checkbox rapid-checkbox-dataset")
+        .style("padding", "10px 14px")
+        .style("background", "rgba(15, 23, 42, 0.45)")
+        .style("border-radius", "8px")
+        .style("margin", "6px 0")
+        .style("border", "1px solid rgba(255, 255, 255, 0.08)")
+        .style("display", "flex")
+        .style("align-items", "center")
+        .style("justify-content", "space-between");
+
+      const $feat2 = $row2.append("div").attr("class", "rapid-feature").style("flex", "1 1 auto").style("padding-right", "12px");
+      const $line2_1 = $feat2.append("div").style("display", "flex").style("align-items", "center").style("gap", "8px");
+      $line2_1.append("div").style("font-weight", "700").style("font-size", "13px").style("color", "#cbd5e1").text("Vector Tiles Server (MVT)");
+      $line2_1.append("span").style("font-size", "10px").style("padding", "1px 5px").style("border-radius", "4px").style("background", "rgba(56, 189, 248, 0.15)").style("color", "#38bdf8").text("/v1/tiles/{z}/{x}/{y}.pbf");
+      const $line2_2 = $feat2.append("div").style("margin-top", "3px").style("font-size", "11px").style("color", "#64748b");
+      $line2_2.text("Real-time PostGIS ST_AsMVT streaming for multi-scale rendering.");
     }
     /**
      * toggleRapid
-     * Called when a user has clicked the checkbox to toggle all Rapid layers on/off.
-     * @param  {Event}  e? - triggering event (if any)
+     * Toggle all LandAssist AI layers on/off.
      */
     toggleRapid() {
       const scene = this.context.systems.gfx.scene;
-      scene.toggleLayers("rapid");
+      const customLayer = scene.layers.get("custom-data");
+      if (customLayer) {
+        scene.toggleLayers("custom-data");
+      }
+      const rapidLayer = scene.layers.get("rapid");
+      if (rapidLayer) {
+        scene.toggleLayers("rapid");
+      }
+      this.render();
     }
     /**
      * toggleDataset
-     * Called when a user has clicked the checkbox to toggle a dataset on/off.
-     * @param  {Event}  e? - triggering event (if any)
-     * @param  {*}      d - bound datum (the RapidDataset in this case)
      */
     toggleDataset(e3, d2) {
-      const context2 = this.context;
-      const rapid = context2.systems.rapid;
-      context2.enter("browse");
-      rapid.toggleDatasets(d2.id);
+      this.toggleRapid();
     }
     /**
      * _showIgnoredIdsDialog
@@ -132954,8 +132964,10 @@ ${url_tokens}
      */
     isLayerEnabled() {
       const scene = this.context.systems.gfx.scene;
+      const customLayer = scene.layers.get("custom-data");
+      if (customLayer) return customLayer.enabled;
       const rapidLayer = scene.layers.get("rapid");
-      return rapidLayer?.enabled;
+      return rapidLayer?.enabled ?? true;
     }
   };
 
@@ -134408,7 +134420,7 @@ ${url_tokens}
       let introModal = modalSelection.select(".content");
       introModal.append("div").attr("class", "modal-section").append("h3").text(l10n.t("rapid_splash.welcome"));
       introModal.append("div").attr("class", "modal-section").append("p").html(l10n.t("rapid_splash.text", {
-        rapidicon: icon(`#rapid-logo-rapid-wordmark${rtl}`, "logo-rapid"),
+        rapidicon: '<span style="color:#0284c7;font-weight:bold;">LandAssist</span>',
         walkthrough: icon("#rapid-logo-walkthrough", "logo-walkthrough"),
         edit: icon("#rapid-logo-features", "logo-features")
       }));
@@ -134443,7 +134455,7 @@ ${url_tokens}
       modal.select(".modal").attr("class", "modal rapid-modal");
       const content = modal.select(".content");
       content.append("div").attr("class", "modal-section").append("h3").html(l10n.t("rapid_first_edit.nice", {
-        rapidicon: icon(`#rapid-logo-rapid-wordmark${rtl}`, "logo-rapid")
+        rapidicon: '<span style="color:#0284c7;font-weight:bold;">LandAssist</span>'
       }));
       content.append("div").attr("class", "modal-section").append("p").text(l10n.t("rapid_first_edit.text"));
       const buttonWrap = content.append("div").attr("class", "modal-actions");
@@ -135635,6 +135647,11 @@ ${url_tokens}
 
   // modules/ui/splash.js
   function uiSplash(context2) {
+    return function render(selection2) {
+      // Disabled in LandAssist Web Editor - directly load map without Rapid splash popup
+    };
+  }
+  function __disabled_uiSplash(context2) {
     const assets = context2.systems.assets;
     const l10n = context2.systems.l10n;
     const storage = context2.systems.storage;
@@ -136084,6 +136101,11 @@ ${url_tokens}
 
   // modules/ui/whats_new.js
   function uiWhatsNew(context2) {
+    return function render(selection2) {
+      // Disabled in LandAssist Web Editor - directly load map without Rapid splash popup
+    };
+  }
+  function __disabled_uiWhatsNew(context2) {
     const assets = context2.systems.assets;
     const l10n = context2.systems.l10n;
     const storage = context2.systems.storage;
@@ -136241,10 +136263,6 @@ ${url_tokens}
           $container.call(uiIntro(context2));
         } else if (editor.canRestoreBackup) {
           $container.call(uiRestore(context2));
-        } else if (sawPrivacyVersion !== context2.privacyVersion) {
-          $container.call(uiSplash(context2));
-        } else if (sawWhatsNewVersion !== context2.whatsNewVersion) {
-          $container.call(uiWhatsNew(context2));
         }
         this._started = true;
       });

@@ -46,7 +46,9 @@ DDL_STATEMENTS = [
 
 
 def _promote_to_multipolygon(geom: Polygon | MultiPolygon) -> MultiPolygon:
-    """Ensure geometry is a `MultiPolygon` for strict PostGIS schema compatibility."""
+    """Ensure geometry is a topologically valid `MultiPolygon` for strict PostGIS compatibility."""
+    if not geom.is_valid:
+        geom = geom.buffer(0)
     if isinstance(geom, Polygon):
         return MultiPolygon([geom])
     return geom
@@ -120,12 +122,12 @@ async def ingest_features_to_postgis(
                     )
                 )
 
-            # Insert in batches using ST_GeomFromText
+            # Insert in batches using ST_Multi(ST_MakeValid(ST_GeomFromText($6, 4326)))
             insert_sql = """
                 INSERT INTO landuse_predictions
                     (landuse_class, confidence, area_m2, model_version, aoi_source, geom)
                 VALUES
-                    ($1, $2, $3, $4, $5, ST_GeomFromText($6, 4326));
+                    ($1, $2, $3, $4, $5, ST_Multi(ST_MakeValid(ST_GeomFromText($6, 4326))));
             """
             for i in range(0, len(records), batch_size):
                 batch = records[i : i + batch_size]

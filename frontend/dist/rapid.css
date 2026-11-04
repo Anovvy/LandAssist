@@ -7376,3 +7376,46 @@ hide this one and style something on top of it.  */
   opacity: 0.45;
   filter: grayscale(80%);
 }
+
+/* LandAssist Modal & Checkbox Styling Overrides */
+.ideditor .modal.rapid-modal {
+  background: #0f172a !important;
+  border: 1px solid rgba(56, 189, 248, 0.35) !important;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7) !important;
+  border-radius: 12px !important;
+}
+.ideditor .modal.rapid-modal .content.rapid-stack {
+  background: #0f172a !important;
+  color: #f1f5f9 !important;
+}
+.ideditor .modal.rapid-modal button.ok-button {
+  background: #10B981 !important;
+  color: #ffffff !important;
+  border-radius: 8px !important;
+  font-weight: 700 !important;
+  height: 2.75rem !important;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35) !important;
+}
+.ideditor .modal.rapid-modal button.ok-button:hover,
+.ideditor .modal.rapid-modal button.ok-button:focus {
+  background: #059669 !important;
+}
+.ideditor .modal.rapid-modal button.close svg {
+  color: #38bdf8 !important;
+  fill: #38bdf8 !important;
+}
+.ideditor .modal.rapid-modal button.close:hover svg {
+  color: #0284c7 !important;
+  fill: #0284c7 !important;
+}
+.ideditor .rapid-checkbox-label input:checked ~ .rapid-checkbox-custom::after {
+  border: solid #10B981 !important;
+  border-width: 0 3px 3px 0 !important;
+}
+.ideditor .rapid-checkbox-label .rapid-checkbox-custom {
+  border-color: rgba(56, 189, 248, 0.6) !important;
+  border-radius: 6px !important;
+}
+.ideditor .modal.rapid-modal ::-webkit-scrollbar-thumb {
+  background-color: #0284c7 !important;
+}

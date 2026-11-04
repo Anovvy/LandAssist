@@ -249,18 +249,18 @@ def cmd_register(args: argparse.Namespace) -> int:
         )
         if not pt_files:
             print(
-                f"[ERROR] Tidak ditemukan file .pt di dalam {WEIGHT_DIR}.\n"
-                f"Silakan taruh file weight hasil fine-tuning Drive Anda ke folder `weight/` terlebih dahulu.",
+                f"[ERROR] No .pt files found in {WEIGHT_DIR}.\n"
+                f"Please place your fine-tuned weight checkpoint in the `weight/` directory first.",
                 file=sys.stderr,
             )
             return 1
         source_path = pt_files[0]
 
     if not source_path.exists():
-        print(f"[ERROR] File tidak ditemukan: {source_path}", file=sys.stderr)
+        print(f"[ERROR] File not found: {source_path}", file=sys.stderr)
         return 1
 
-    print(f"[1/4] Memeriksa metadata checkpoint: {source_path.name} ...")
+    print(f"[1/4] Inspecting checkpoint metadata: {source_path.name} ...")
     meta = inspect_and_normalize_checkpoint(source_path, override_version=args.version)
     version = meta["model_version"]
     if not version.startswith("v"):
@@ -271,12 +271,12 @@ def cmd_register(args: argparse.Namespace) -> int:
     target_path = WEIGHT_DIR / canonical_filename
 
     if source_path.resolve() != target_path.resolve():
-        print(f"[2/4] Menyalin/menstandarkan nama file ke: weight/{canonical_filename} ...")
+        print(f"[2/4] Normalizing filename to: weight/{canonical_filename} ...")
         shutil.copy2(source_path, target_path)
     else:
-        print(f"[2/4] Nama file sudah sesuai standar: weight/{canonical_filename}")
+        print(f"[2/4] Filename is already standardized: weight/{canonical_filename}")
 
-    print("[3/4] Menghitung checksum SHA-256 & ukuran file ...")
+    print("[3/4] Computing SHA-256 checksum & file size ...")
     sha256_hex = compute_sha256(target_path)
     size_mb = round(target_path.stat().st_size / (1024 * 1024), 2)
 
@@ -314,9 +314,9 @@ def cmd_register(args: argparse.Namespace) -> int:
     notes_path = WEIGHT_DIR / f"RELEASE_NOTES_{version}.md"
     notes_path.write_text(generate_release_notes(entry, repo=repo), encoding="utf-8")
 
-    print(f"[4/4] Berhasil memperbarui weight/manifest.json untuk versi {version}!")
-    print(f"      - File Lokal     : {target_path}")
-    print(f"      - Ukuran         : {size_mb} MB")
+    print(f"[4/4] Successfully updated weight/manifest.json for version {version}!")
+    print(f"      - Local File     : {target_path}")
+    print(f"      - Size           : {size_mb} MB")
     print(f"      - SHA-256        : {sha256_hex}")
     print(f"      - Release Tag    : {release_tag}")
     print(f"      - Release Notes  : {notes_path}")
@@ -406,7 +406,7 @@ def cmd_publish(args: argparse.Namespace) -> int:
 
     models = manifest.get("models", {})
     if version not in models or not models[version].get("sha256"):
-        print(f"[INFO] Versi {version} belum teregistrasi penuh, menjalankan `register` otomatis ...")
+        print(f"[INFO] Version {version} is not fully registered; running automatic `register` ...")
         reg_args = argparse.Namespace(
             file=args.file,
             version=version,
@@ -422,7 +422,7 @@ def cmd_publish(args: argparse.Namespace) -> int:
     repo = args.repo or manifest.get("repository", DEFAULT_REPO)
     asset_path = WEIGHT_DIR / entry["filename"]
     if not asset_path.exists():
-        print(f"[ERROR] File bobot lokal tidak ditemukan: {asset_path}", file=sys.stderr)
+        print(f"[ERROR] Local weight file not found: {asset_path}", file=sys.stderr)
         return 1
 
     tag = entry["release_tag"]
@@ -433,7 +433,7 @@ def cmd_publish(args: argparse.Namespace) -> int:
 
     token = args.token or os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
     if token:
-        print(f"[PUBLISH] Mengunggah {asset_path.name} ({entry['size_mb']} MB) ke GitHub Release `{tag}` ({repo}) via REST API ...")
+        print(f"[PUBLISH] Uploading {asset_path.name} ({entry['size_mb']} MB) to GitHub Release `{tag}` ({repo}) via REST API ...")
         try:
             url = _publish_via_github_api(
                 repo=repo,
@@ -443,15 +443,15 @@ def cmd_publish(args: argparse.Namespace) -> int:
                 asset_path=asset_path,
                 token=token,
             )
-            print(f"[OK] Berhasil di-publish ke GitHub Releases!\n     Download URL: {url}")
+            print(f"[OK] Successfully published to GitHub Releases!\n     Download URL: {url}")
             return 0
         except Exception as exc:
-            print(f"[ERROR] Gagal mengunggah via GitHub REST API: {exc}", file=sys.stderr)
+            print(f"[ERROR] Failed to upload via GitHub REST API: {exc}", file=sys.stderr)
             return 1
 
     gh_bin = shutil.which("gh")
     if gh_bin:
-        print(f"[PUBLISH] Mengunggah {asset_path.name} ke GitHub Release `{tag}` menggunakan GitHub CLI (`gh`) ...")
+        print(f"[PUBLISH] Uploading {asset_path.name} to GitHub Release `{tag}` via GitHub CLI (`gh`) ...")
         cmd = [
             gh_bin,
             "release",
@@ -467,20 +467,20 @@ def cmd_publish(args: argparse.Namespace) -> int:
         ]
         res = subprocess.run(cmd, cwd=REPO_ROOT, check=False)
         if res.returncode == 0:
-            print(f"[OK] Berhasil di-publish ke GitHub Releases: {entry['download_url']}")
+            print(f"[OK] Successfully published to GitHub Releases: {entry['download_url']}")
             return 0
 
     print(
-        "\n[INFO] Metadata & Release Notes sudah siap, namun `$env:GITHUB_TOKEN` belum di-set dan `gh` CLI tidak terdeteksi.\n"
-        "Pilih salah satu cara berikut untuk menyelesaikan upload ke GitHub Release:\n\n"
-        "CARA A — Otomatis via Terminal (menggunakan Personal Access Token GitHub):\n"
-        "  $env:GITHUB_TOKEN=\"ghp_token_github_anda\"\n"
+        "\n[INFO] Metadata & Release Notes are ready, but `$env:GITHUB_TOKEN` is not set and `gh` CLI was not found.\n"
+        "Choose one of the following methods to complete the GitHub Release upload:\n\n"
+        "METHOD A — Automated via Terminal (using GitHub Personal Access Token):\n"
+        "  $env:GITHUB_TOKEN=\"ghp_your_github_token_here\"\n"
         f"  python scripts/manage_weights.py publish --version {version}\n\n"
-        "CARA B — Upload via Browser (10 Detik di GitHub Web UI):\n"
-        f"  1. Buka: https://github.com/{repo}/releases/new\n"
-        f"  2. Isi Tag: `{tag}` dan Release Title: `{title}`\n"
-        f"  3. Copy-paste isi file `{notes_path}` ke kolom deskripsi.\n"
-        f"  4. Drag & drop file `weight/{entry['filename']}` lalu klik 'Publish release'.\n"
+        "METHOD B — Manual Web Upload (via GitHub Web UI):\n"
+        f"  1. Navigate to: https://github.com/{repo}/releases/new\n"
+        f"  2. Set Tag: `{tag}` and Release Title: `{title}`\n"
+        f"  3. Copy-paste the content of `{notes_path}` into the description field.\n"
+        f"  4. Drag & drop `weight/{entry['filename']}` and click 'Publish release'.\n"
     )
     return 0
 
@@ -495,8 +495,8 @@ def cmd_download(args: argparse.Namespace) -> int:
     models = manifest.get("models", {})
     if version not in models:
         print(
-            f"[ERROR] Versi {version} tidak ditemukan di dalam weight/manifest.json. "
-            f"Versi tersedia: {list(models.keys())}",
+            f"[ERROR] Version {version} not found in weight/manifest.json. "
+            f"Available versions: {list(models.keys())}",
             file=sys.stderr,
         )
         return 1
@@ -510,15 +510,15 @@ def cmd_download(args: argparse.Namespace) -> int:
         if expected_sha256:
             actual_sha = compute_sha256(dest_path)
             if actual_sha == expected_sha256:
-                print(f"[OK] File weight/{entry['filename']} sudah ada dan lolos verifikasi SHA-256.")
+                print(f"[OK] File weight/{entry['filename']} already exists and passed SHA-256 verification.")
                 return 0
-            print("[WARN] Checksum file lokal berbeda dari manifest, mengunduh ulang ...")
+            print("[WARN] Local file checksum does not match manifest; re-downloading ...")
         else:
-            print(f"[OK] File weight/{entry['filename']} sudah tersedia secara lokal.")
+            print(f"[OK] File weight/{entry['filename']} is already available locally.")
             return 0
 
     url = entry["download_url"]
-    print(f"[DOWNLOAD] Mengunduh {entry['filename']} dari {url} ...")
+    print(f"[DOWNLOAD] Downloading {entry['filename']} from {url} ...")
     headers = {"User-Agent": "LandAssist-Weight-Manager"}
     token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
     if token:
@@ -533,22 +533,22 @@ def cmd_download(args: argparse.Namespace) -> int:
     except Exception as exc:
         if tmp_path.exists():
             tmp_path.unlink()
-        print(f"[ERROR] Gagal mengunduh dari GitHub Releases ({url}): {exc}", file=sys.stderr)
+        print(f"[ERROR] Failed to download from GitHub Releases ({url}): {exc}", file=sys.stderr)
         return 1
 
     if expected_sha256:
         actual_sha = compute_sha256(dest_path)
         if actual_sha != expected_sha256:
             print(
-                f"[ERROR] Checksum SHA-256 tidak cocok!\n"
+                f"[ERROR] SHA-256 checksum mismatch!\n"
                 f"  Expected: {expected_sha256}\n"
                 f"  Actual  : {actual_sha}",
                 file=sys.stderr,
             )
             return 1
-        print(f"[OK] Unduhan selesai & terverifikasi SHA-256 ({actual_sha[:12]}...): {dest_path}")
+        print(f"[OK] Download complete & SHA-256 verified ({actual_sha[:12]}...): {dest_path}")
     else:
-        print(f"[OK] Unduhan selesai: {dest_path}")
+        print(f"[OK] Download complete: {dest_path}")
     return 0
 
 

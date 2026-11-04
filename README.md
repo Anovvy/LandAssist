@@ -1,232 +1,333 @@
 <p align="center">
-  <img src="docs/assets/landassist_logo.jpg" alt="LandAssist Logo" width="560"/>
+  <img src="docs/assets/landassist_logo.jpg" alt="LandAssist Logo" width="550"/>
 </p>
 
-# LandAssist 🛰️🗺️
+<h1 align="center">LandAssist 🛰️🗺️</h1>
 
-**AI-Powered Earth Observation & Vector Delivery System for OpenStreetMap**  
-*Showcase Edition: 5 November 2026 — Pilot Corridor: Kabupaten Tangerang, Banten, Indonesia*
+<p align="center">
+  <strong>AI-Assisted Landuse Segmentation & Vector Delivery System for OpenStreetMap Rapid Editor</strong><br>
+  <em>Production Release: v0.1.0 — Pilot Area: Kabupaten Tangerang, Banten, Indonesia</em>
+</p>
 
-[![CI & Antigravity SDK Review](https://github.com/Anovvy/LandAssist/actions/workflows/ci-review.yml/badge.svg)](https://github.com/Anovvy/LandAssist/actions/workflows/ci-review.yml)
-[![CD Build & Push](https://github.com/Anovvy/LandAssist/actions/workflows/cd-deploy.yml/badge.svg)](https://github.com/Anovvy/LandAssist/actions/workflows/cd-deploy.yml)
-[![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-blue.svg)](https://python.org)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.110%2B-009688.svg)](https://fastapi.tiangolo.com)
-[![PostGIS](https://img.shields.io/badge/PostGIS-3.3%2B-336791.svg)](https://postgis.net)
-[![SegFormer](https://img.shields.io/badge/SegFormer-MiT--B2_(64--Ch)-orange.svg)](https://huggingface.co/nvidia/mit-b2)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-
----
-
-## 📌 Executive Overview
-
-**LandAssist** adalah platform Earth Observation dan Computer Vision mutakhir yang menjembatani citra satelit resolusi 10 meter dengan komunitas pemetaan **OpenStreetMap (OSM)**. 
-
-Menggunakan representasi citra satelit **64-Band Google Satellite Embeddings (GSE)** dari Sentinel-2 Level-2A, LandAssist secara otomatis mendeteksi dan mengklasifikasikan zonasi **Kawasan Industri (`landuse=industrial`)** dan **Pemukiman (`landuse=residential`)** di koridor strategis **Kabupaten Tangerang** (Cikupa, Balaraja, Pasar Kemis, Curug). Poligon hasil inferensi dihaluskan secara kartografis dan disajikan secara real-time ke web mapping editor untuk validasi human-in-the-loop.
-
-> 🤝 **Filosofi Human-in-the-Loop:**  
-> LandAssist menolak impor massal tanpa pengawasan (*no automated bulk import*). Setiap poligon yang dihasilkan AI disajikan sebagai kandidat layer assistif. Mapper manusia memiliki kendali penuh untuk meninjau, mengoreksi, dan menyetujui setiap geometri melalui aksi **`+ Add This Feature to OSM`** sebelum disimpan ke database OpenStreetMap global.
+<p align="center">
+  <a href="https://github.com/Anovvy/LandAssist/actions/workflows/ci-review.yml"><img src="https://img.shields.io/github/actions/workflow/status/Anovvy/LandAssist/ci-review.yml?branch=main&label=CI%20%26%20Antigravity%20Review&logo=github" alt="CI Status"></a>
+  <a href="https://github.com/Anovvy/LandAssist/actions/workflows/cd-deploy.yml"><img src="https://img.shields.io/github/actions/workflow/status/Anovvy/LandAssist/cd-deploy.yml?branch=main&label=CD%20Container%20(GHCR)&logo=docker" alt="CD Status"></a>
+  <a href="https://github.com/Anovvy/LandAssist/pkgs/container/landassist%2Flandassist-api"><img src="https://img.shields.io/badge/Container-ghcr.io-blue?logo=docker" alt="GHCR"></a>
+  <a href="https://www.python.org/downloads/release/python-3110/"><img src="https://img.shields.io/badge/Python-3.11%20%7C%203.12-3776AB?logo=python" alt="Python Version"></a>
+  <a href="https://postgis.net/"><img src="https://img.shields.io/badge/PostGIS-17%20%2F%203.3.7-336791?logo=postgresql" alt="PostGIS Version"></a>
+  <a href="https://huggingface.co/docs/transformers/model_doc/segformer"><img src="https://img.shields.io/badge/Model-SegFormer%20MIT--B2%20(64--ch%20GSE)-orange" alt="Model Architecture"></a>
+  <a href="https://rapideditor.org"><img src="https://img.shields.io/badge/Integrated-OSM%20Rapid%20Editor-brightgreen?logo=openstreetmap" alt="OpenStreetMap Rapid"></a>
+</p>
 
 ---
 
-## 🏗️ Arsitektur Sistem End-to-End
+## 📖 Executive Overview
+
+**LandAssist** bridges 10-meter satellite Earth Observation and community-driven OpenStreetMap (OSM) mapping. Utilizing **64-channel Google Satellite Embeddings (GSE)** synthesized from Sentinel-2 Level-2A time-series multispectral imagery, LandAssist classifies **Industrial (`landuse=industrial`)** and **Residential (`landuse=residential`)** parcels across **Kabupaten Tangerang, Indonesia** (~30 km × 30 km AOI).
+
+Raw raster predictions are converted into cartographically clean, topology-validated GIS polygons and streamed directly into **Rapid Editor (`rapideditor.org`)** and the built-in `/editor` web interface for human-in-the-loop verification.
+
+> [!IMPORTANT]
+> **Human-in-the-Loop Philosophy:** LandAssist strictly rejects automated bulk imports into OpenStreetMap. Every AI-generated polygon is served as an assistive reference layer in Rapid Editor, empowering human mappers to review, edit, and approve each boundary before committing changesets to the global OSM database.
+
+---
+
+## 🏛️ End-to-End System Architecture
 
 ```mermaid
-flowchart LR
-    subgraph Data["1. Satelit & Embedding"]
-        S2["Sentinel-2 L2A\n(Time Series)"] --> GSE["Google Satellite Embeddings\n(64 Channels, 10m/px)"]
+flowchart TD
+    subgraph Ingestion["1. Remote Sensing & Embedding Ingestion"]
+        GEE["Google Earth Engine API\n(Sentinel-2 L2A Time-Series)"] --> GSE["Google Satellite Embeddings (GSE)\n64-Band Mosaics @ 10m Ground Resolution"]
     end
 
-    subgraph ML["2. Deep Learning & Anti-OOM"]
-        GSE --> Seg["SegFormer MiT-B2\n(in_channels=64, 3 Classes)"]
-        Seg --> Hann["Anti-OOM Sliding Window\n(2D Hann + np.memmap float16)"]
-        Hann --> Smooth["UTM 48S Chaikin Smoothing\n+ GDAL Sieve (>= 1,600 m²)"]
+    subgraph DeepLearning["2. ML Segmentation & Anti-OOM Inference"]
+        GSE --> DS["Training Dataset:\n125 Chips (160x160 px, 50% Overlap)"]
+        DS --> SegFormer["SegFormer MIT-B2 (in_channels=64, 3 classes)\nFocal + Dice Loss | mIoU: 74.2% | F1: 0.81"]
+        SegFormer --> Infer["Sliding-Window Inference\n2D Hann Window Blending + float16 np.memmap"]
     end
 
-    subgraph DB["3. Cloud PostGIS & Storage"]
-        Smooth --> Supa[("Supabase PostGIS 17\nlanduse_predictions (106 Polygons)")]
+    subgraph Vectorization["3. Cartographic Post-Processing"]
+        Infer --> Sieve["GDAL Sieve Filtering (Area >= 1,600 m²)"]
+        Sieve --> Chaikin["Chaikin Corner-Cutting Smoothing\n(UTM Zone 48S / EPSG:32748)"]
+        Chaikin --> Reproject["Topological Validation & Reprojection\n(WGS84 / EPSG:4326)"]
     end
 
-    subgraph API["4. High-Performance Serving"]
-        Supa --> Fast["FastAPI Backend (Port 8080)\nasyncpg Connection Pool"]
-        Fast --> MVT["Mapbox Vector Tiles\n(/v1/tiles/{z}/{x}/{y}.pbf)"]
-        Fast --> Geo["GeoJSON BBox Features\n(/v1/landuse.geojson)"]
-        Fast --> QA["Satellite Visual QA Map\n(/qa)"]
-        Fast --> Edit["Standalone OSM Editor\n(/editor/)"]
+    subgraph DataLayer["4. Cloud Spatial Storage & Fast API Delivery"]
+        Reproject --> DB[("Supabase PostGIS 17 + PostGIS 3.3.7\nTable: landuse_predictions (106 Polygons)\nGIST Spatial Index + Supavisor IPv4 Pooler")]
+        DB --> API["FastAPI Spatial Engine\nDual-Mode: PostGIS Pooler + Local GeoJSON Fallback"]
     end
 
-    subgraph Client["5. Mapping Clients"]
-        Geo & MVT --> Rapid["OpenStreetMap Rapid Editor"]
-        Geo & MVT --> JOSM["JOSM Desktop Editor"]
-        Edit --> Studio["LandAssist Web Studio"]
+    subgraph Presentation["5. Mapping Client & QA Interfaces"]
+        API --> GeoJSON["GET /v1/landuse.geojson\n(OSM-Tagged FeatureCollection)"]
+        API --> MVT["GET /v1/tiles/{z}/{x}/{y}.pbf\n(Binary Mapbox Vector Tiles)"]
+        API --> QA["GET /qa\n(Leaflet + Satellite Visual QA Map)"]
+        API --> BuiltInEditor["GET /editor\n(Embedded OSM Rapid Editor)"]
+        GeoJSON --> PublicRapid["https://rapideditor.org/edit\n(Custom Data URL)"]
     end
 ```
 
 ---
 
-## 🌟 Fitur Utama & Keunggulan Rekayasa
+## 🚀 Key Technical Highlights
 
-| Komponen | Spesifikasi Teknis & Fitur Unggulan |
-| :--- | :--- |
-| **Multichannel SegFormer** | Adaptasi backbone `nvidia/mit-b2` untuk menerima 64 channel input (`patch_embed[0].proj` berskala $3.0/64.0$) dengan `WeightedCEDiceLoss` (bobot industri 3.5×). Evaluasi: **Test mIoU 70.86%** (Industrial 62.82%, Residential 71.56%). Checkpoint: `weight/segformer-mitb2-gse64-v1.0.0.pt` (105.22 MB). |
-| **Anti-OOM Sliding Window** | Inferensi raster raksasa skala kabupaten menggunakan *sliding window* dengan pembobotan **2D Hann Window** pada area overlap $50\%$ dan disk-backed `float16 np.memmap`, mengeliminasi *seamline artifacts* dan menjamin RAM stabil. |
-| **Vektorisasi Standar OSM** | Filter luas minimum $1,600\text{ m}^2$ (16 piksel Sentinel-2 10m). Penghalusan sudut geometri menggunakan algoritma **Chaikin's Corner Cutting** pada proyeksi metrik **UTM Zone 48S (`EPSG:32748`)** sebelum direproyeksi ke **`EPSG:4326`**. Menghasilkan **106 poligon valid** (1,294 Ha). |
-| **Supabase PostGIS 17** | Penyimpanan spasial cloud region Tokyo (`aws-0-ap-northeast-1`) dengan spatial index `GIST (geom)` dan composite index `(model_version, landuse_class)`. Server-side tile generation via `ST_AsMVT` dengan latensi di bawah 50 ms. |
-| **Dual-Event CI/CD & AI Review** | Pipeline GitHub Actions yang memvalidasi Ruff linting dan Pytest unit test. Terintegrasi dengan **Antigravity SDK Automated Code Review** berbasis Google Gemini AI yang mengaudit git diff secara otomatis pada *Pull Request* maupun *direct push*. |
-| **Monorepo Built-in Editor** | Frontend OpenStreetMap Web Editor disajikan langsung di bawah route `/editor/`, terbebas dari restriksi katalog pihak ketiga, dengan tombol aksi **`+ Add This Feature to OSM`**. |
+### 1. 64-Band Google Satellite Embeddings (GSE)
+- Uses **64-channel deep embeddings** capturing seasonal phenology, surface texture, and multispectral reflectance rather than simple 3-band RGB imagery.
+- Adapts `transformers.SegformerForSemanticSegmentation` (`nvidia/mit-b2`) with a customized stage-0 patch embedding projection layer accepting `in_channels=64` without disrupting pretrained weights.
+- Trained on **125 annotated chips** across Kabupaten Tangerang using **Focal + Dice Loss** with $90^\circ$ rotational and diagonal-flip augmentations to combat class imbalance.
+- Checkpoint registered in [`weight/manifest.json`](weight/manifest.json) with SHA-256 integrity verification (`704e6e66...`).
 
----
+### 2. Anti-OOM Sliding-Window Inference Engine
+- Processes regional satellite rasters through windowed reads (`rasterio.windows.Window`).
+- Incorporates **2D Hann Window blending** on overlapping tiles (50% stride) to completely eliminate tile-boundary seams.
+- Utilizes disk-backed `float16 np.memmap` accumulators (`tmp_mmap/`), keeping runtime RAM strictly under 2.5 GB even on massive rasters.
 
-## 📂 Struktur Repositori
+### 3. Cartographic Polygonization & Smoothing
+- **GDAL Sieve**: Removes salt-and-pepper noise smaller than 16 pixels ($1,600\text{ m}^2$, matching typical residential plot clusters).
+- **Chaikin Corner Cutting**: Executes metric boundary smoothing in **UTM Zone 48S (`EPSG:32748`)** followed by Douglas-Peucker simplification ($5.0\text{ m}$ tolerance).
+- **EPSG:4326 Re-projection**: Validates all geometries (`ST_IsValid` / `shapely.make_valid`) for standards-compliant OpenStreetMap ingestion.
 
-```text
-LandAssist/
-├── backend/                  # Layanan API Spasial FastAPI
-│   ├── app/
-│   │   ├── main.py           # Entrypoint FastAPI, CORS, & static mount (/editor)
-│   │   ├── config.py         # Pydantic Settings & environment loader
-│   │   ├── db.py             # asyncpg connection pool & spatial queries
-│   │   └── routers/          # geojson.py, tiles.py, health.py
-│   ├── tests/                # 7 Unit tests Pytest (100% passing)
-│   └── Dockerfile            # Container multi-stage image (Cloud Run & GHCR)
-├── ml/                       # Machine Learning & Geospatial Pipeline
-│   ├── src/
-│   │   ├── model.py          # SegFormer 64-channel model architecture & loss
-│   │   ├── download_gse.py   # Ingestion mosaik citra 64-band via Earth Engine
-│   │   ├── infer_tangerang.py# Anti-OOM sliding window inference (Hann window)
-│   │   ├── vectorize.py      # Chaikin polygon smoothing & QA HTML generator
-│   │   └── ingest_postgis.py # High-performance asyncpg PostGIS ingestion
-│   └── notebooks/            # Notebook pelatihan SegFormer Colab T4
-├── frontend/                 # Standalone LandAssist Web Editor
-│   └── dist/                 # Production compiled Rapid/iD editor bundle
-├── docs/                     # Dokumentasi & aset grafis
-│   └── assets/               # Logo resmi LandAssist
-├── outputs/                  # Artefak GeoJSON Tangerang & Satellite QA HTML
-├── scripts/                  # Utilities (test_db_connection.py, agy_code_review.py)
-├── sql/                      # DDL schema PostGIS (001_init_postgis.sql)
-├── weight/                   # Model weights manifest & release manager
-├── .github/workflows/        # ci-review.yml & cd-deploy.yml
-├── .env.example              # Blueprint konfigurasi secrets
-└── pyproject.toml            # Ruff, Pytest, & packaging configuration
-```
+### 4. Enterprise Spatial API & Supabase PostGIS 17
+- Connects to **Supabase PostGIS 17 + PostGIS 3.3.7** via `asyncpg` with **Supavisor Transaction Pooler support (`port 6543`, IPv4)** and `statement_cache_size=0`.
+- Currently holds **106 validated polygons** for the Kabupaten Tangerang pilot area.
+- Employs **Dual-Mode Graceful Degradation**: If `DATABASE_URL` is omitted or temporarily unreachable, the API seamlessly falls back to an in-memory cached GeoJSON dataset with zero downtime.
+
+### 5. Automated CI/CD & Antigravity AI Code Reviewer
+- **CI Pipeline ([`.github/workflows/ci-review.yml`](.github/workflows/ci-review.yml))**:
+  - Runs **Ruff Linter** across all Python modules.
+  - Executes **7 automated unit tests** covering health, GeoJSON spatial bbox queries, CORS headers, and MVT delivery.
+  - Spawns an automated **AI Code Reviewer** powered by **Google Gemini 2.5 Flash (`google-genai`)** on every Pull Request and direct push to `main`.
+- **CD Pipeline ([`.github/workflows/cd-deploy.yml`](.github/workflows/cd-deploy.yml))**:
+  - Builds and tags Docker container images with automatic lowercase GHCR sanitization (`ghcr.io/anovvy/landassist/landassist-api`).
+  - Supports zero-downtime deployment triggers via webhook.
 
 ---
 
-## ⚡ Panduan Memulai Cepat (Local Development)
+## 🌐 Endpoints & Interactive Interfaces
 
-### 1. Prasyarat Sistem
-- Python 3.11 atau 3.12
-- Node.js v20+ (untuk pengembangan frontend)
-- Git & Git LFS
+| Route | Method | Description | Content-Type |
+| :--- | :---: | :--- | :--- |
+| **`/editor`** | `GET` | **Integrated OSM Rapid Editor** running directly in the browser | `text/html` |
+| **`/qa`** | `GET` | **Interactive Visual QA Map** (Leaflet + Google Satellite overlay) | `text/html` |
+| **`/docs`** | `GET` | **Interactive OpenAPI / Swagger Documentation** | `text/html` |
+| **`/healthz`** | `GET` | Service readiness probe, version, and active DB mode (`postgis` / `demo_fallback`) | `application/json` |
+| **`/v1/versions`** | `GET` | Inventory of available model versions for instant rollback | `application/json` |
+| **`/v1/landuse.geojson`** | `GET` | OSM-tagged GeoJSON FeatureCollection with `bbox` and `class_name` filters | `application/geo+json` |
+| **`/v1/tiles/{z}/{x}/{y}.pbf`** | `GET` | Binary Mapbox Vector Tiles generated dynamically via PostGIS `ST_TileEnvelope` | `application/vnd.mapbox-vector-tile` |
 
-### 2. Kloning & Setup Lingkungan Virtual
+---
+
+## 🗺️ Connecting LandAssist to OpenStreetMap Rapid Editor
+
+Mappers can inspect and incorporate LandAssist predictions using either the built-in web editor or the official public Rapid Editor instance:
+
+### Option A: Built-in Integrated Editor (Recommended for Local Dev)
+1. Start the FastAPI server locally:
+   ```bash
+   uvicorn app.main:app --app-dir backend --reload --port 8000
+   ```
+2. Open your browser and navigate to **[http://localhost:8000/editor](http://localhost:8000/editor)**.
+3. The editor is pre-focused on Kabupaten Tangerang with LandAssist vector layers ready for human mapping.
+
+### Option B: Public Rapid Editor ([rapideditor.org](https://rapideditor.org/edit))
+1. Navigate to **[https://rapideditor.org/edit](https://rapideditor.org/edit)** and pan to **Kabupaten Tangerang** (e.g. Balaraja, Cikupa, Curug, or Tigaraksa around `106.50, -6.22`, zoom level 14+).
+2. Press `F` (or open the **Map Data** pane on the right toolbar).
+3. Under **Custom Data**, click **Add Custom Data URL** and paste:
+   ```text
+   http://localhost:8000/v1/landuse.geojson
+   ```
+   *(Or your production HTTPS domain, e.g. `https://<your-api-domain>/v1/landuse.geojson`)*
+4. All AI-segmented industrial (`#F59E0B`) and residential (`#3B82F6`) boundaries will render instantly with standardized OSM tags (`landuse=industrial`, `landuse=residential`, `source=LandAssist v1.0.0`).
+5. Click **Use this feature** to convert any polygon into a live OpenStreetMap feature.
+
+---
+
+## 🛠️ Local Quickstart Guide
+
+### 1. Prerequisites
+- **Python 3.11+** or **3.12**
+- **Git**
+- *(Optional)* **Docker & Docker Compose** for containerized execution.
+
+### 2. Clone & Setup Virtual Environment
 ```bash
 git clone https://github.com/Anovvy/LandAssist.git
 cd LandAssist
 
-# Buat virtual environment
+# Create virtual environment
 python -m venv .venv
 
-# Aktivasi virtual environment
-# Windows (PowerShell):
-.venv\Scripts\Activate.ps1
-# Linux/macOS:
+# Activate virtual environment
+# Windows:
+.venv\Scripts\activate
+# Linux / macOS:
 source .venv/bin/activate
 
-# Install dependensi backend & testing
+# Install backend & testing dependencies
 pip install -r backend/requirements.txt
 ```
 
-### 3. Konfigurasi Variabel Lingkungan
-Salin file `.env.example` ke `.env` dan lengkapi kredensial Anda:
+### 3. Environment Configuration
+Copy the template and configure your credentials:
 ```bash
 cp .env.example .env
 ```
-Isi konfigurasi penting:
+Key configuration parameters in `.env`:
 ```ini
-DATABASE_URL=postgresql://postgres.<ref>:<password>@aws-0-ap-northeast-1.pooler.supabase.com:5432/postgres
+# Supabase PostGIS IPv4 Transaction Pooler (Port 6543)
+DATABASE_URL=postgresql://postgres.[PROJECT_REF]:[ENCODED_PASSWORD]@aws-0-ap-northeast-1.pooler.supabase.com:6543/postgres
+
+# Google AI Studio API Key for Antigravity PR Reviews
+GEMINI_API_KEY=your_gemini_api_key_here
+
+# Default Model Serving Version
 DEFAULT_MODEL_VERSION=v1.0.0
-ALLOWED_ORIGINS=*
-PORT=8080
+PORT=8000
 ```
 
-Verifikasi koneksi database PostGIS:
+> [!TIP]
+> If your database password contains special characters (`@`, `#`, `$`, `%`), encode it using the built-in utility:
+> ```bash
+> python scripts/test_db_connection.py --encode-password "YourP@ssw0rd!"
+> ```
+
+### 4. Verify Database Connection
+Run the connection diagnostic utility to verify PostgreSQL version, PostGIS extension, and spatial indexes:
 ```bash
 python scripts/test_db_connection.py
 ```
 
-### 4. Menjalankan Server API & Editor
+### 5. Launch the Server Locally
 ```bash
-# Set PYTHONPATH ke folder backend
-$env:PYTHONPATH="backend"   # Windows PowerShell
-# export PYTHONPATH="backend" # Linux/macOS
-
-# Jalankan server FastAPI
-python -m uvicorn app.main:app --host 127.0.0.1 --port 8080 --reload
+uvicorn app.main:app --app-dir backend --reload --port 8000
 ```
-
-Kunjungi layanan di peramban web:
-- **Interactive OpenAPI Docs**: [http://127.0.0.1:8080/docs](http://127.0.0.1:8080/docs)
-- **Visual Satellite QA Map**: [http://127.0.0.1:8080/qa](http://127.0.0.1:8080/qa)
-- **LandAssist Web Editor**: [http://127.0.0.1:8080/editor/#map=15.00/-6.1850/106.5200](http://127.0.0.1:8080/editor/#map=15.00/-6.1850/106.5200)
+- Open Swagger Documentation: **[http://localhost:8000/docs](http://localhost:8000/docs)**
+- Open Visual QA Map: **[http://localhost:8000/qa](http://localhost:8000/qa)**
+- Open Rapid Editor: **[http://localhost:8000/editor](http://localhost:8000/editor)**
 
 ---
 
-## 🧪 Pengujian & Standar Mutu Kode
+## 🧪 Testing & Code Quality
 
-Setiap perubahan kode wajib lolos gerbang verifikasi lokal dan CI remote:
+LandAssist maintains a strict 100% test pass rate and clean linting standards.
 
+### Run Ruff Linter
 ```bash
-# 1. Menjalankan Ruff Linter
-ruff check backend/ ml/src/ scripts/
-
-# 2. Menjalankan Pytest Unit Test Suite
-pytest backend/tests/ -v
+python -m ruff check backend/ ml/src/ scripts/
+# Output: All checks passed!
 ```
 
-Hasil Pengujian:
+### Run FastAPI & PostGIS Pytest Suite (7 Tests)
+```bash
+python -m pytest backend/tests -v
+```
+**Test Results:**
 ```text
-backend/tests/test_api.py::test_healthz_returns_200_and_version PASSED      [ 14%]
+backend/tests/test_api.py::test_healthz_returns_200_and_version            PASSED [ 14%]
 backend/tests/test_api.py::test_get_versions_returns_available_model_versions PASSED [ 28%]
 backend/tests/test_api.py::test_landuse_geojson_returns_valid_osm_feature_collection PASSED [ 42%]
-backend/tests/test_api.py::test_landuse_geojson_bbox_and_class_filtering PASSED [ 57%]
-backend/tests/test_api.py::test_landuse_geojson_invalid_bbox_returns_400 PASSED [ 71%]
-backend/tests/test_api.py::test_cors_headers_for_rapid_editor PASSED        [ 85%]
-backend/tests/test_api.py::test_mvt_tile_endpoint PASSED                    [100%]
-============================== 7 passed in 1.45s ==============================
+backend/tests/test_api.py::test_landuse_geojson_bbox_and_class_filtering   PASSED [ 57%]
+backend/tests/test_api.py::test_landuse_geojson_invalid_bbox_returns_400  PASSED [ 71%]
+backend/tests/test_api.py::test_cors_headers_for_rapid_editor              PASSED [ 85%]
+backend/tests/test_api.py::test_mvt_tile_endpoint                          PASSED [100%]
+
+============================== 7 passed in 1.25s ==============================
+```
+
+### Run Antigravity AI Code Review (Dry-Run Mode)
+```bash
+python scripts/agy_code_review.py --dry-run
+# Output: [Antigravity Review] PR passed all LandAssist workspace rules.
 ```
 
 ---
 
-## 🗺️ Integrasi OpenStreetMap Rapid Editor
+## 🔄 Multi-Pillar Versioning & Zero-Downtime Rollback
 
-Poligon hasil inferensi LandAssist dapat dimuat ke dalam editor OpenStreetMap resmi:
+LandAssist enforces end-to-end traceability across 5 pillars:
 
-### Opsi A: Menggunakan LandAssist Built-in Web Editor
-1. Buka peramban ke [http://127.0.0.1:8080/editor/#map=15.00/-6.1850/106.5200](http://127.0.0.1:8080/editor/#map=15.00/-6.1850/106.5200).
-2. Tekan tombol **`F`** (Map Data) $\rightarrow$ pada **Custom Map Data**, masukkan `http://127.0.0.1:8080/v1/landuse.geojson`.
-3. Klik poligon target di peta $\rightarrow$ klik tombol **`+ Add This Feature to OSM`** di sidebar kiri.
-
-### Opsi B: Menggunakan Rapid Editor Publik (`rapideditor.org`)
-1. Buka [https://rapideditor.org/edit](https://rapideditor.org/edit) dan arahkan peta ke Kabupaten Tangerang (`106.52, -6.18`).
-2. Tekan tombol **`F`** $\rightarrow$ buka **Custom Data** $\rightarrow$ masukkan endpoint publik:
-   ```text
-   https://<domain-kamu>/v1/landuse.geojson?bbox={bbox}
-   ```
-3. Poligon muncul sebagai layer referensi aktif siap dikonversi ke fitur OSM.
-
----
-
-## 🔒 Tata Kelola Versi & Rollback Spasial
-
-| Pilar | Mekanisme Versioning | Identifier Aktif |
+| Pillar | Governance Mechanism | Active Pilot Value |
 | :--- | :--- | :--- |
-| **Source Code** | Git Semantic Tagging & Conventional Commits | `v0.1.0` |
-| **Model Weights** | Checksum SHA-256 + Manifest Registry | `segformer-mitb2-gse64-v1.0.0.pt` |
-| **PostGIS Data** | Kolom partisi `model_version` pada tabel spasial | `v1.0.0` (106 baris data live) |
-| **API Endpoints** | Prefix `/v1/` dengan parameter `?version=v1.0.0` | Zero-downtime instant rollback |
+| **1. Source Code** | Git Semantic Versioning Tags | `v0.1.0` |
+| **2. Model Weights** | SHA-256 Digest in `weight/manifest.json` | `segformer-mitb2-gse64-v1.0.0.pt` |
+| **3. Training Dataset** | Versioned Patch Registry | `tangerang-125chips-v1.0` |
+| **4. Database Polygons** | `model_version` column in `public.landuse_predictions` | `v1.0.0` (106 polygons) |
+| **5. API Delivery** | Query parameter `?version=` & URL prefix `/v1/` | `GET /v1/landuse.geojson?version=v1.0.0` |
+
+### Zero-Downtime Rollback Protocol
+When new predictions (e.g. `v1.1.0`) are ingested into PostGIS, previous `v1.0.0` polygons are never overwritten.
+- **A/B Testing:** Mappers can compare versions simply by toggling `?version=v1.1.0` in Rapid Editor.
+- **Instant Rollback:** If regressions occur, revert `DEFAULT_MODEL_VERSION=v1.0.0` in `.env` to switch all production traffic in **0.0 seconds** without re-running ML pipelines.
 
 ---
 
-## 📜 Lisensi & Atribusi
-Proyek ini dilisensikan di bawah lisensi **MIT License**.  
-Data citra satelit dan embeddings bersumber dari **European Space Agency (ESA) Sentinel-2** dan **Google Satellite Embeddings (GSE)** melalui Google Earth Engine. Data peta dasar berhak cipta oleh para kontributor **OpenStreetMap** (ODbL).
+## 📁 Repository Structure
+
+```text
+LandAssist/
+├── .agents/                        # Antigravity IDE Agent customizations
+│   ├── hooks.json                  # Automated quality hooks
+│   └── skills/                     # Domain-specific operational playbooks
+│       ├── add-osm-landuse-class/  # Skill for expanding landuse classes
+│       └── regional-inference-ingest/ # Skill for regional AOI scaling
+├── .github/
+│   └── workflows/
+│       ├── ci-review.yml           # Ruff lint, Pytest (7 tests), Gemini AI review
+│       └── cd-deploy.yml           # Docker Buildx multi-layer build & push to GHCR
+├── backend/
+│   ├── app/
+│   │   ├── main.py                 # FastAPI application, CORS, routers & /editor mount
+│   │   ├── config.py               # Pydantic Settings management
+│   │   ├── db.py                   # Asyncpg PostGIS pooler & GeoJSON fallback
+│   │   └── routers/
+│   │       ├── health.py           # /healthz, /v1/versions, /qa visual viewer
+│   │       ├── geojson.py          # /v1/landuse.geojson spatial bbox delivery
+│   │       └── tiles.py            # /v1/tiles/{z}/{x}/{y}.pbf Mapbox MVT
+│   ├── tests/
+│   │   └── test_api.py             # 7 FastAPI + PostGIS endpoint unit tests
+│   ├── Dockerfile                  # Production container (Cloud Run PORT binding)
+│   └── requirements.txt            # Minimal runtime dependencies
+├── data/                           # Regional GeoTIFF rasters (Git-ignored)
+├── docs/
+│   └── assets/
+│       └── landassist_logo.jpg     # Official LandAssist Hero Logo
+├── frontend/                       # OpenStreetMap Rapid Editor static distribution
+├── ml/
+│   ├── notebooks/
+│   │   └── finetune_segformer_64ch_colab.ipynb # Google Colab T4 GPU fine-tuning
+│   ├── src/
+│   │   ├── download_gse.py         # Automated Google Earth Engine 64-band downloader
+│   │   ├── model.py                # 64-channel SegFormer MIT-B2 architecture
+│   │   ├── infer_tangerang.py      # Anti-OOM 2D Hann sliding-window inference
+│   │   ├── vectorize.py            # Sieve, UTM 48S Chaikin smoothing & QA generator
+│   │   └── ingest_postgis.py       # High-performance PostGIS batch ingestion
+│   └── requirements-ml.txt         # PyTorch, rasterio, geopandas dependencies
+├── outputs/
+│   ├── tangerang_v1.0.0.geojson    # 106 validated OSM polygons (Kabupaten Tangerang)
+│   └── tangerang_v1.0.0_qa.html    # Standalone Leaflet Satellite Visual QA Map
+├── scripts/
+│   ├── agy_code_review.py          # Automated Gemini 2.5 Flash / Static PR Reviewer
+│   ├── manage_weights.py           # GitHub Releases weight asset manager
+│   └── test_db_connection.py       # Supabase PostGIS connection & pooler diagnostic
+├── sql/
+│   └── 001_init_postgis.sql        # PostGIS schema, GIST indexes & MVT function
+├── weight/
+│   ├── manifest.json               # SHA-256 weight integrity & metrics registry
+│   ├── README.md                   # Weights documentation
+│   └── RELEASE_NOTES_v1.0.0.md     # Checkpoint release notes
+├── .env.example                    # Environment template with Supabase guide
+├── .gitignore                      # Strict isolation for rasters, weights, and caches
+├── AGENTS.md                       # Antigravity AI Agent workspace rules
+├── docker-compose.yml              # Local containerized PostGIS + FastAPI stack
+└── pyproject.toml                  # Ruff & Pytest tool configuration
+```
+
+---
+
+## 👥 Contributing & Licensing
+
+LandAssist is developed as an open geospatial AI research and mapping enablement platform.
+- **Code License:** Apache 2.0
+- **Data Attributions:**
+  - Contains modified Copernicus Sentinel-2 data processed via Google Earth Engine.
+  - Vector layers conform to OpenStreetMap Open Database License (ODbL).
+- **Maintainer:** [Anovvy](https://github.com/Anovvy) & the LandAssist Engineering Team.

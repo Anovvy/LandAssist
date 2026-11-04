@@ -67,8 +67,8 @@ async def test_connection(dsn: str) -> bool:
     try:
         import asyncpg
     except ImportError:
-        print("\n❌ Modul 'asyncpg' belum terinstall.")
-        print("👉 Jalankan: pip install asyncpg\n")
+        print("\n❌ Error: 'asyncpg' module is not installed.")
+        print("👉 Run: pip install asyncpg\n")
         return False
 
     info = parse_connection_info(dsn)
@@ -87,12 +87,12 @@ async def test_connection(dsn: str) -> bool:
 
     is_pooler = "pooler.supabase.com" in str(host) or port == 6543
     if is_pooler:
-        print("ℹ️  Mode        : Supavisor Connection Pooler")
+        print("ℹ️  Mode        : Supavisor Connection Pooler (IPv4 Transaction Mode)")
     else:
-        print("ℹ️  Mode        : Direct Connection (Port 5432)")
+        print("ℹ️  Mode        : Direct Connection (Port 5432, IPv6)")
 
     print("-" * 65)
-    print("⏳ Menghubungkan ke PostgreSQL...", end="", flush=True)
+    print("⏳ Connecting to PostgreSQL...", end="", flush=True)
 
     start_time = time.perf_counter()
     conn = None
@@ -104,7 +104,7 @@ async def test_connection(dsn: str) -> bool:
 
         conn = await asyncpg.connect(dsn, **kwargs)
         elapsed_ms = (time.perf_counter() - start_time) * 1000.0
-        print(f" ✅ BERHASIL! ({elapsed_ms:.1f} ms)")
+        print(f" ✅ SUCCESS! ({elapsed_ms:.1f} ms)")
 
         # 1. Check Server Version
         pg_version = await conn.fetchval("SELECT version();")
@@ -114,14 +114,13 @@ async def test_connection(dsn: str) -> bool:
         # 2. Check PostGIS Extension
         try:
             postgis_ver = await conn.fetchval("SELECT postgis_full_version();")
-            # Extract main PostGIS version number
             pgis_match = re.search(r"POSTGIS=\"([^\"]+)\"", postgis_ver or "")
             clean_pgis = pgis_match.group(1) if pgis_match else postgis_ver[:40]
-            print(f"🗺️  PostGIS Extension   : ✅ Aktif (Version: {clean_pgis})")
+            print(f"🗺️  PostGIS Extension   : ✅ Active (Version: {clean_pgis})")
         except Exception as e:
-            print("🗺️  PostGIS Extension   : ❌ Belum aktif!")
+            print("🗺️  PostGIS Extension   : ❌ Not active!")
             print(f"   Error: {e}")
-            print("   👉 Solusi: Jalankan 'CREATE EXTENSION postgis;' di Supabase SQL Editor.")
+            print("   👉 Solution: Execute 'CREATE EXTENSION postgis;' in Supabase SQL Editor.")
 
         # 3. Check Table `landuse_predictions`
         table_exists = await conn.fetchval(
@@ -136,7 +135,7 @@ async def test_connection(dsn: str) -> bool:
 
         if table_exists:
             row_count = await conn.fetchval("SELECT count(*) FROM landuse_predictions;")
-            print(f"📊 Table 'landuse_predictions': ✅ Ditemukan ({row_count} baris data)")
+            print(f"📊 Table 'landuse_predictions': ✅ Found ({row_count} rows)")
 
             # Check Spatial Index
             has_spatial_idx = await conn.fetchval(
@@ -148,7 +147,7 @@ async def test_connection(dsn: str) -> bool:
                 );
                 """
             )
-            idx_status = "✅ Ada (GIST)" if has_spatial_idx else "⚠️ Belum dibuat"
+            idx_status = "✅ Active (GIST)" if has_spatial_idx else "⚠️ Not created"
             print(f"⚡ Spatial Index (GIST)        : {idx_status}")
 
             # Check Helper Function get_landuse_mvt
@@ -160,51 +159,51 @@ async def test_connection(dsn: str) -> bool:
                 );
                 """
             )
-            func_status = "✅ Siap (Vector Tiles)" if func_exists else "⚠️ Belum dibuat"
+            func_status = "✅ Ready (Vector Tiles)" if func_exists else "⚠️ Not created"
             print(f"🧩 MVT Function (get_landuse_mvt): {func_status}")
         else:
-            print("📊 Table 'landuse_predictions': ⚠️ Belum ada di skema public.")
-            print("   👉 Solusi: Eksekusi script 'sql/001_init_postgis.sql' di Supabase SQL Editor.")
+            print("📊 Table 'landuse_predictions': ⚠️ Not found in public schema.")
+            print("   👉 Solution: Execute 'sql/001_init_postgis.sql' in Supabase SQL Editor.")
 
         # 4. Geometry Sanity Test
         try:
             sample_point = await conn.fetchval(
                 "SELECT ST_AsText(ST_GeomFromText('POINT(106.8456 -6.2088)', 4326));"
             )
-            print(f"📍 PostGIS Point Sanity Test   : ✅ Berhasil ({sample_point})")
+            print(f"📍 PostGIS Point Sanity Test   : ✅ Passed ({sample_point})")
         except Exception as e:
-            print(f"📍 PostGIS Point Sanity Test   : ❌ Gagal ({e})")
+            print(f"📍 PostGIS Point Sanity Test   : ❌ Failed ({e})")
 
         print("\n" + "=" * 65)
-        print("🎉 Kredensial & PostGIS valid 100%! Siap digunakan untuk deployment!")
+        print("🎉 Database connection & PostGIS verified 100%! Ready for deployment!")
         print("=" * 65 + "\n")
         return True
 
     except asyncpg.exceptions.InvalidPasswordError:
-        print(" ❌ GAGAL!")
-        print("\n❌ Error: Password database salah!")
-        print("💡 Tips:")
-        print("  1. Pastikan password sesuai dengan password yang Anda buat saat setup project Supabase.")
-        print("  2. Jika password mengandung karakter khusus (@, #, $, %, dll), karakter tersebut WAJIB di-URL-encode.")
-        print("     Jalankan helper: python scripts/test_db_connection.py --encode-password \"password_lu\"")
+        print(" ❌ FAILED!")
+        print("\n❌ Error: Invalid database password!")
+        print("💡 Troubleshooting Tips:")
+        print("  1. Verify that the password matches your Supabase project password.")
+        print("  2. If your password contains special characters (@, #, $, %, etc.), it MUST be URL-encoded.")
+        print("     Run encoder helper: python scripts/test_db_connection.py --encode-password \"your_password\"")
         return False
 
     except (OSError, TimeoutError) as exc:
-        print(" ❌ GAGAL!")
-        print(f"\n❌ Network/Timeout Error: {exc}")
-        print("💡 Tips Diagnostik:")
+        print(" ❌ FAILED!")
+        print(f"\n❌ Network / Timeout Error: {exc}")
+        print("💡 Diagnostic Tips:")
         if not is_pooler and port == 5432:
-            print("  1. Host direct 'db.<project>.supabase.co:5432' menggunakan IPv6.")
-            print("     Banyak ISP / router di Indonesia belum mendukung IPv6 penuh.")
-            print("  2. Solusi: Gunakan Connection Pooler Supavisor (Port 6543 atau 5432 pooler):")
+            print("  1. Direct connection 'db.<project>.supabase.co:5432' requires IPv6 routing.")
+            print("     Some ISPs / local networks do not have full IPv6 support.")
+            print("  2. Solution: Use Supavisor Connection Pooler (Port 6543, IPv4):")
             print("     postgresql://postgres.<project_ref>:[PASSWORD]@aws-0-<region>.pooler.supabase.com:6543/postgres")
         else:
-            print("  1. Periksa koneksi internet Anda.")
-            print("  2. Pastikan project Supabase Anda tidak dalam kondisi 'Paused'.")
+            print("  1. Check your internet connection.")
+            print("  2. Ensure your Supabase project is not paused.")
         return False
 
     except Exception as exc:
-        print(" ❌ GAGAL!")
+        print(" ❌ FAILED!")
         print(f"\n❌ Error detail: {type(exc).__name__}: {exc}")
         return False
 
@@ -215,17 +214,17 @@ async def test_connection(dsn: str) -> bool:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="LandAssist Supabase PostGIS Connection Tester & Helper"
+        description="LandAssist Supabase PostGIS Connection Tester & Diagnostics"
     )
     parser.add_argument(
         "--url",
         "-u",
-        help="PostgreSQL connection string (DSN). Default: dibaca dari file .env (DATABASE_URL)",
+        help="PostgreSQL connection string (DSN). Default: loaded from .env (DATABASE_URL)",
     )
     parser.add_argument(
         "--encode-password",
         "-e",
-        help="Helper untuk meng-URL-encode password yang memiliki simbol khusus.",
+        help="Helper to URL-encode database passwords containing special characters.",
     )
 
     args = parser.parse_args()
@@ -237,7 +236,7 @@ def main() -> None:
         print("\n🔐 URL-Encoded Password Helper:")
         print(f"Original : {raw_pw}")
         print(f"Encoded  : {encoded}")
-        print("\nContoh pemakaian di DATABASE_URL:")
+        print("\nExample usage in DATABASE_URL:")
         print(f"postgresql://postgres.xxx:{encoded}@aws-0-ap-northeast-1.pooler.supabase.com:6543/postgres\n")
         return
 
@@ -249,12 +248,12 @@ def main() -> None:
         target_url = env_vars.get("DATABASE_URL") or os.environ.get("DATABASE_URL")
 
     if not target_url or "password@db.xxxx" in target_url:
-        print("\n⚠️  DATABASE_URL belum dikonfigurasi!")
-        print("Anda bisa memasukkannya dengan salah satu cara berikut:")
-        print("1. Isi DATABASE_URL di file .env (copy dari .env.example)")
-        print("2. Atau jalankan langsung:")
+        print("\n⚠️  DATABASE_URL is not configured!")
+        print("You can provide it using one of the following methods:")
+        print("1. Set DATABASE_URL in your .env file (copied from .env.example)")
+        print("2. Or pass it directly via CLI:")
         print('   python scripts/test_db_connection.py --url "postgresql://postgres:password@host:5432/postgres"')
-        print("\nJika password mengandung karakter spesial:")
+        print("\nIf your password contains special characters:")
         print('   python scripts/test_db_connection.py --encode-password "MyP@ss#123"')
         sys.exit(1)
 

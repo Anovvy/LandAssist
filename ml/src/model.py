@@ -305,8 +305,8 @@ def resolve_checkpoint_path(
         return pt_files[0]
 
     raise FileNotFoundError(
-        f"Checkpoint tidak ditemukan di `{w_dir}` untuk versi `{ver}`. "
-        f"Taruh file `.pt` di `weight/` atau jalankan: `python scripts/manage_weights.py download --version {ver}`"
+        f"Checkpoint not found in `{w_dir}` for version `{ver}`. "
+        f"Place a `.pt` file in `weight/` or run: `python scripts/manage_weights.py download --version {ver}`"
     )
 
 

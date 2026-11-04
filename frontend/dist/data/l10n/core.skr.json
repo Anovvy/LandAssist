@@ -1,0 +1,43 @@
+{
+  "_meta": {
+    "version": "2.5.7",
+    "generated": "2026-11-04T08:51:05.814Z",
+    "url": "https://raw.githubusercontent.com/facebook/rapid/main/dist/data/l10n/core.skr.json",
+    "hash": "5aa51a5522c8f9b6114ee5d6cc0f9edf"
+  },
+  "skr": {
+    "background": {
+      "none": "کوئی وی کائنی"
+    },
+    "icons": {
+      "download": "ڈاؤن لوڈ",
+      "information": "ڄاݨکاری",
+      "list": "تندیر",
+      "remove": "ہٹاؤ"
+    },
+    "inspector": {
+      "none": "کوئی وی کائنی",
+      "unknown": "نامعلوم"
+    },
+    "languageNames": {
+      "skr": "سرائیکی"
+    },
+    "modes": {
+      "add_note": {
+        "title": "نوٹ"
+      },
+      "add_point": {
+        "title": "نقطہ"
+      },
+      "browse": {
+        "title": "براؤز کرو"
+      }
+    },
+    "note": {
+      "note": "نوٹ"
+    },
+    "toolbar": {
+      "recent": "حالیہ"
+    }
+  }
+}

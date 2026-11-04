@@ -25,10 +25,10 @@
 
 **LandAssist** bridges 10-meter satellite Earth Observation and community-driven OpenStreetMap (OSM) mapping. Utilizing **64-channel Google Satellite Embeddings (GSE)** synthesized from Sentinel-2 Level-2A time-series multispectral imagery, LandAssist classifies **Industrial (`landuse=industrial`)** and **Residential (`landuse=residential`)** parcels across **Kabupaten Tangerang, Indonesia** (~30 km × 30 km AOI).
 
-Raw raster predictions are converted into cartographically clean, topology-validated GIS polygons and streamed directly into **Rapid Editor (`rapideditor.org`)** and the built-in `/editor` web interface for human-in-the-loop verification.
+Raw raster predictions are converted into cartographically clean, topology-validated GIS polygons and streamed directly into **LandAssist Web Editor** (built-in standalone OSM web editor at `/editor`) and external GIS clients for human-in-the-loop verification.
 
 > [!IMPORTANT]
-> **Human-in-the-Loop Philosophy:** LandAssist strictly rejects automated bulk imports into OpenStreetMap. Every AI-generated polygon is served as an assistive reference layer in Rapid Editor, empowering human mappers to review, edit, and approve each boundary before committing changesets to the global OSM database.
+> **Human-in-the-Loop Philosophy:** LandAssist strictly rejects automated bulk imports into OpenStreetMap. Every AI-generated polygon is served as an assistive reference layer in **LandAssist Web Editor**, empowering human mappers to review, edit, and approve each boundary before committing changesets to the global OSM database.
 
 ---
 
@@ -116,17 +116,26 @@ flowchart TD
 
 ---
 
-## 🗺️ Connecting LandAssist to OpenStreetMap Rapid Editor
+## 🗺️ LandAssist Web Editor & OpenStreetMap Integration
 
-Mappers can inspect and incorporate LandAssist predictions using either the built-in web editor or the official public Rapid Editor instance:
+Mappers can inspect and incorporate LandAssist predictions using either the standalone built-in web editor or external GIS clients:
 
-### Option A: Built-in Integrated Editor (Recommended for Local Dev)
+### Option A: Standalone LandAssist Web Editor (`/editor`) — Recommended
+LandAssist provides its own **standalone AI-assisted OpenStreetMap web editor** based on the iD / Rapid v2 engine, deeply integrated with the FastAPI backend without external catalog constraints.
+
 1. Start the FastAPI server locally:
    ```bash
    uvicorn app.main:app --app-dir backend --reload --port 8000
    ```
-2. Open your browser and navigate to **[http://localhost:8000/editor](http://localhost:8000/editor)**.
-3. The editor is pre-focused on Kabupaten Tangerang with LandAssist vector layers ready for human mapping.
+2. Navigate to **[http://localhost:8000/editor](http://localhost:8000/editor)**.
+3. The editor automatically centers on the **Kabupaten Tangerang** AOI (`106.50, -6.22`, zoom 14.5) with satellite basemap and AI predictions active:
+   - 🏭 **Industrial Parcels**: Rendered with **Amber Gold (`#F59E0B`)** high-visibility outlines.
+   - 🏡 **Residential Parcels**: Rendered with **Emerald Green (`#10B981`)** outlines.
+4. Click any AI polygon to open the **LandAssist AI Inspector**:
+   - Displays real-time **Model Confidence** (e.g. `94.0%`), **Estimated Area** in Hectares & m², and data source metadata.
+   - Click **`+ Add This Feature to OSM`**: The polygon **immediately transforms** into the native iD editor style, color, and preset (`landuse=residential` in native gold/amber area styling or `landuse=industrial` in native pink/purple area styling) with pre-populated tags (`source=LandAssist AI (Sentinel-2 GSE)`, `model_version=v1.0.0`).
+   - Click **`- Ignore This Feature`**: Dismisses false positives from the current curation session.
+   - Full Undo/Redo (`Ctrl+Z` / `Ctrl+Y`) and instant vertex editing.
 
 ### Option B: Public Rapid Editor ([rapideditor.org](https://rapideditor.org/edit))
 1. Navigate to **[https://rapideditor.org/edit](https://rapideditor.org/edit)** and pan to **Kabupaten Tangerang** (e.g. Balaraja, Cikupa, Curug, or Tigaraksa around `106.50, -6.22`, zoom level 14+).
@@ -135,9 +144,9 @@ Mappers can inspect and incorporate LandAssist predictions using either the buil
    ```text
    http://localhost:8000/v1/landuse.geojson
    ```
-   *(Or your production HTTPS domain, e.g. `https://<your-api-domain>/v1/landuse.geojson`)*
-4. All AI-segmented industrial (`#F59E0B`) and residential (`#3B82F6`) boundaries will render instantly with standardized OSM tags (`landuse=industrial`, `landuse=residential`, `source=LandAssist v1.0.0`).
-5. Click **Use this feature** to convert any polygon into a live OpenStreetMap feature.
+   *(Or your production HTTPS tunnel domain, e.g. `https://<your-api-domain>/v1/landuse.geojson`)*
+4. All AI-segmented industrial (`#F59E0B`) and residential (`#10B981`) boundaries will render instantly with standardized OSM tags.
+5. Click **Add This Feature to OSM** to accept and convert any polygon into a live OpenStreetMap feature.
 
 ---
 

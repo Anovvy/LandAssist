@@ -14,6 +14,10 @@ from app.config import settings
 logger = logging.getLogger(__name__)
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 LOCAL_GEOJSON_PATH = REPO_ROOT / "outputs" / "tangerang_v1.0.0.geojson"
+if not LOCAL_GEOJSON_PATH.exists():
+    _app_outputs = Path(__file__).resolve().parent.parent / "outputs" / "tangerang_v1.0.0.geojson"
+    if _app_outputs.exists():
+        LOCAL_GEOJSON_PATH = _app_outputs
 
 # Built-in realistic demo polygons for Kabupaten Tangerang (EPSG:4326)
 # Enables zero-config CI testing, local development, and offline Rapid Editor demos

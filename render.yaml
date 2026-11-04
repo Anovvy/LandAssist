@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: landassist-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    region: singapore
+    plan: free
+    branch: main
+    autoDeploy: true
+    healthCheckPath: /healthz
+    envVars:
+      - key: PORT
+        value: 8000
+      - key: DEFAULT_MODEL_VERSION
+        value: v1.0.0
+      - key: ALLOWED_ORIGINS
+        value: "*"
+      - key: MIN_AREA_SQM
+        value: "1600.0"
+      - key: DATABASE_URL
+        sync: false

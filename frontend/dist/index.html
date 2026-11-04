@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset='utf-8'>
+    <title>LandAssist — AI-Assisted OpenStreetMap Web Editor</title>
+    <link rel='stylesheet' href='rapid.css'>
+    <link rel='icon' type='image/svg' href='img/rapid_favicon.svg'>
+
+    <meta name='viewport' content='width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no'/>
+    <meta name='mobile-web-app-capable' content='yes'/>
+    <meta name='apple-mobile-web-app-status-bar-style' content='black-translucent'/>
+    <style type='text/css'>
+      html, body {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        background-color: #0f172a;
+      }
+      #rapid-container {
+        width: 100%;
+        height: 100%;
+      }
+    </style>
+  </head>
+
+  <body>
+    <!-- LandAssist Satellite Brand Badge -->
+    <div id="landassist-brand-bar" style="position:absolute; top:10px; left:10px; z-index:9999; display:flex; align-items:center; gap:12px; background:rgba(15,23,42,0.92); backdrop-filter:blur(8px); border:1px solid rgba(56,189,248,0.35); border-radius:10px; padding:6px 14px; box-shadow:0 4px 16px rgba(0,0,0,0.4); font-family:system-ui,-apple-system,sans-serif; pointer-events:auto;">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span style="font-size:18px;">🛰️</span>
+        <div>
+          <div style="font-size:13px; font-weight:800; color:#38bdf8; letter-spacing:0.02em;">LandAssist <span style="color:#10b981; font-weight:600;">Web Editor</span></div>
+          <div style="font-size:10px; color:#94a3b8;">Kabupaten Tangerang • SegFormer GSE 64-Band</div>
+        </div>
+      </div>
+      <div style="height:22px; width:1px; background:rgba(255,255,255,0.15);"></div>
+      <div style="display:flex; align-items:center; gap:6px; font-size:11px; font-weight:600; color:#10b981;">
+        <span style="width:7px; height:7px; border-radius:50%; background:#10b981; box-shadow:0 0 8px #10b981; display:inline-block;"></span>
+        <span>Live PostGIS</span>
+      </div>
+      <a href="/docs" target="_blank" style="font-size:11px; color:#cbd5e1; text-decoration:none; padding:3px 8px; border-radius:5px; background:rgba(255,255,255,0.08); transition:background 0.2s;">Swagger API</a>
+      <a href="/qa" target="_blank" style="font-size:11px; color:#cbd5e1; text-decoration:none; padding:3px 8px; border-radius:5px; background:rgba(255,255,255,0.08); transition:background 0.2s;">QA Viewer</a>
+    </div>
+
+    <div id='rapid-container'></div>
+
+    <script src='rapid.js'></script>
+    <script>
+      // Automatically route to Tangerang AOI with LandAssist GeoJSON layer
+      if (!window.location.hash || window.location.hash.length <= 1) {
+        window.location.hash = '#map=14.50/-6.2200/106.5000&data=/v1/landuse.geojson';
+      } else {
+        if (!window.location.hash.includes('data=')) {
+          window.location.hash += '&data=/v1/landuse.geojson';
+        }
+        if (!window.location.hash.includes('map=')) {
+          window.location.hash += '&map=14.50/-6.2200/106.5000';
+        }
+      }
+
+      var container = document.getElementById('rapid-container');
+      if (typeof Rapid === 'undefined') {
+        container.innerHTML = '<div style="padding:20px; font-family:sans-serif; color:#da26d3;"><h3>Failed to load Rapid engine.</h3></div>';
+      } else {
+        const context = new Rapid.Context();
+        context.containerNode = container;
+        context.assetPath = '';
+        context.buildID = 'landassist-web-editor';
+        context.buildSHA = 'v1.0.0';
+        context.buildDate = '2026-11-04';
+        context.apiConnections = [
+          {
+            url: 'https://www.openstreetmap.org',
+            apiUrl: 'https://api.openstreetmap.org',
+            client_id: 'O3g0mOUuA2WY5Fs826j5tP260qR3DDX7cIIE2R2WWSc',
+            client_secret: 'b4aeHD1cNeapPPQTrvpPoExqQRjybit6JBlNnxh62uE'
+          }
+        ];
+
+        window.rapidContext = context;
+        context.initAsync().then(() => {
+          console.log('[LandAssist] Standalone Web Editor initialized with native landuse presets & styling!');
+        });
+      }
+    </script>
+  </body>
+</html>

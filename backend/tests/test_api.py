@@ -94,3 +94,12 @@ def test_mvt_tile_endpoint() -> None:
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/vnd.mapbox-vector-tile"
     assert "max-age=300" in response.headers.get("cache-control", "")
+
+
+def test_editor_endpoint_returns_200() -> None:
+    """Verify GET /editor/ serves the LandAssist Web Editor HTML entrypoint."""
+    response = client.get("/editor/")
+    assert response.status_code == 200
+    assert "text/html" in response.headers.get("content-type", "")
+    assert "LandAssist" in response.text
+

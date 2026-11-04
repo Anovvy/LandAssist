@@ -19,7 +19,9 @@ env/
 .mypy_cache/
 .coverage
 htmlcov/
-dist/
+/dist/
+!frontend/dist/
+frontend/dist/*.map
 build/
 *.egg-info/
 
@@ -55,7 +57,7 @@ pr_review_comment.md
 docs/DEEP_DIVE_MENTOR_GUIDE.md
 tmp_mmap*/
 outputs/
-data/
+/data/
 weights/
 
 # OS & Editor

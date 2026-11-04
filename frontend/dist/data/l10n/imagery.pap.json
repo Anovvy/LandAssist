@@ -1,0 +1,15 @@
+{
+  "_meta": {
+    "version": "2.5.7",
+    "generated": "2026-11-04T08:51:05.363Z",
+    "url": "https://raw.githubusercontent.com/facebook/rapid/main/dist/data/l10n/imagery.pap.json",
+    "hash": "3c4226fcc3dc8d2d8e738a2a01215958"
+  },
+  "pap": {
+    "imagery": {
+      "OSM_Inspector-Addresses": {
+        "name": "OSM Inspector: Adrei"
+      }
+    }
+  }
+}

@@ -14,6 +14,11 @@ from app.routers import geojson, health, tiles
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 FRONTEND_DIST = REPO_ROOT / "frontend" / "dist"
+if not FRONTEND_DIST.exists():
+    # Support containerized environment where WORKDIR is /app
+    _app_frontend = Path(__file__).resolve().parent.parent / "frontend" / "dist"
+    if _app_frontend.exists():
+        FRONTEND_DIST = _app_frontend
 
 
 @asynccontextmanager

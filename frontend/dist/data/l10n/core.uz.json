@@ -1,0 +1,31 @@
+{
+  "_meta": {
+    "version": "2.5.7",
+    "generated": "2026-11-04T08:51:05.685Z",
+    "url": "https://raw.githubusercontent.com/facebook/rapid/main/dist/data/l10n/core.uz.json",
+    "hash": "4f2a780a3f917ce4b85e458c460523d5"
+  },
+  "uz": {
+    "icons": {
+      "copy": "nusxa olish",
+      "deselect": "tanlovni bekor qilish",
+      "download": "yuklab olish",
+      "favorite": "sevimli",
+      "information": "maʼlumot",
+      "list": "roʻyxat",
+      "remove": "oʻchirib tashlash",
+      "text": "matn",
+      "undo": "bekor qilish",
+      "view_on": "{domain}da koʻrish",
+      "visit_website": "veb-saytga o‘tish",
+      "zoom_to": "yaqinlashtirish"
+    },
+    "toolbar": {
+      "add_feature": "Obyekt qo‘shish",
+      "favorites": "Sevimlilar",
+      "inspect": "Koʻrib chiqish",
+      "recent": "Soʻnggi",
+      "undo_redo": "Bekor qilish / Qaytarish"
+    }
+  }
+}

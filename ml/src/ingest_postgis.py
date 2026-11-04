@@ -1,4 +1,4 @@
-"""PostGIS Ingestion Script with Model Versioning and Zero-Downtime Rollback Support.
+"""PostGIS Ingestion Script using asyncpg (Native FastAPI & Supabase Driver).
 
 Loads vectorized LandAssist AI polygons into the `landuse_predictions` PostGIS
 table tagged with `model_version`. Supports `--replace-version` to refresh only
@@ -8,27 +8,30 @@ a target version while preserving prior versions for instant rollback.
 from __future__ import annotations
 
 import argparse
+import asyncio
+import json
 import os
 from pathlib import Path
+from typing import Any
 
-import geopandas as gpd
-from shapely.geometry import MultiPolygon, Polygon
-from sqlalchemy import create_engine, text
-from sqlalchemy.engine import Engine
+import asyncpg
+from dotenv import load_dotenv
+from shapely.geometry import MultiPolygon, Polygon, shape
+
+load_dotenv()
 
 DDL_STATEMENTS = [
     "CREATE EXTENSION IF NOT EXISTS postgis;",
     """
     CREATE TABLE IF NOT EXISTS landuse_predictions (
-        id BIGSERIAL PRIMARY KEY,
-        landuse VARCHAR(32) NOT NULL,
-        class_id SMALLINT NOT NULL,
-        model_version VARCHAR(32) NOT NULL,
-        confidence REAL NOT NULL,
-        area_m2 DOUBLE PRECISION NOT NULL,
-        source VARCHAR(128) NOT NULL DEFAULT 'LandAssist AI (Sentinel-2 + GSE)',
-        geom GEOMETRY(MultiPolygon, 4326) NOT NULL,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        id SERIAL PRIMARY KEY,
+        landuse_class VARCHAR(32) NOT NULL CHECK (landuse_class IN ('industrial', 'residential')),
+        confidence DOUBLE PRECISION NOT NULL DEFAULT 1.0 CHECK (confidence >= 0.0 AND confidence <= 1.0),
+        area_m2 DOUBLE PRECISION NOT NULL DEFAULT 0.0 CHECK (area_m2 >= 0.0),
+        model_version VARCHAR(32) NOT NULL DEFAULT 'v1.0.0',
+        aoi_source VARCHAR(64) NOT NULL DEFAULT 'kab_tangerang_2025',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        geom GEOMETRY(MultiPolygon, 4326) NOT NULL
     );
     """,
     """
@@ -36,8 +39,8 @@ DDL_STATEMENTS = [
     ON landuse_predictions USING GIST (geom);
     """,
     """
-    CREATE INDEX IF NOT EXISTS idx_landuse_predictions_version
-    ON landuse_predictions (model_version, landuse);
+    CREATE INDEX IF NOT EXISTS idx_landuse_predictions_version_class
+    ON landuse_predictions (model_version, landuse_class);
     """,
 ]
 
@@ -49,89 +52,88 @@ def _promote_to_multipolygon(geom: Polygon | MultiPolygon) -> MultiPolygon:
     return geom
 
 
-def ensure_postgis_schema(engine: Engine) -> None:
+async def ensure_postgis_schema(conn: asyncpg.Connection) -> None:
     """Create the `landuse_predictions` table and spatial GIST indexes if absent."""
-    with engine.begin() as conn:
-        for stmt in DDL_STATEMENTS:
-            conn.execute(text(stmt))
+    for stmt in DDL_STATEMENTS:
+        await conn.execute(stmt)
 
 
-def ingest_gdf_to_postgis(
-    gdf: gpd.GeoDataFrame,
+async def ingest_features_to_postgis(
+    features: list[dict[str, Any]],
     db_url: str,
     model_version: str = "v1.0.0",
     replace_version: bool = True,
     batch_size: int = 500,
 ) -> int:
-    """Ingest a LandAssist `GeoDataFrame` into PostGIS `landuse_predictions`.
+    """Ingest GeoJSON features into Supabase PostGIS via asyncpg."""
+    # Normalize postgresql+psycopg2 to standard postgresql
+    if db_url.startswith("postgresql+psycopg2://"):
+        db_url = db_url.replace("postgresql+psycopg2://", "postgresql://", 1)
 
-    Args:
-        gdf: Vectorized polygons in `EPSG:4326`.
-        db_url: SQLAlchemy database URL (`postgresql+psycopg2://...`).
-        model_version: Version tag (`v1.0.0`) stored on every row.
-        replace_version: If `True`, atomically deletes existing rows matching
-            `model_version` before inserting the fresh predictions, leaving all
-            other versions intact for instant rollback.
-        batch_size: Number of polygons inserted per SQL batch.
+    conn = await asyncpg.connect(db_url, statement_cache_size=0)
+    try:
+        await ensure_postgis_schema(conn)
 
-    Returns:
-        Number of inserted polygon rows.
-    """
-    engine = create_engine(db_url, pool_pre_ping=True)
-    ensure_postgis_schema(engine)
-
-    if gdf.empty:
-        if replace_version:
-            with engine.begin() as conn:
-                conn.execute(
-                    text("DELETE FROM landuse_predictions WHERE model_version = :ver"),
-                    {"ver": model_version},
+        async with conn.transaction():
+            if replace_version:
+                deleted = await conn.execute(
+                    "DELETE FROM landuse_predictions WHERE model_version = $1;",
+                    model_version,
                 )
-        return 0
+                print(f"[PostGIS] Cleaned prior records: {deleted}")
 
-    if gdf.crs is not None and gdf.crs.to_epsg() != 4326:
-        gdf = gdf.to_crs(epsg=4326)
+            if not features:
+                return 0
 
-    records = []
-    for _, row in gdf.iterrows():
-        geom = row.geometry
-        if geom is None or geom.is_empty:
-            continue
-        mpoly = _promote_to_multipolygon(geom)
-        records.append(
-            {
-                "landuse": str(row.get("landuse", "residential")),
-                "class_id": int(row.get("class_id", 2)),
-                "model_version": str(row.get("la:version", model_version)),
-                "confidence": float(row.get("la:confidence", 0.5)),
-                "area_m2": float(row.get("area_m2", 0.0)),
-                "source": str(
-                    row.get("source", "LandAssist AI (Sentinel-2 + GSE)")
-                ),
-                "wkt": mpoly.wkt,
-            }
-        )
+            records: list[tuple[Any, ...]] = []
+            for feat in features:
+                props = feat.get("properties", {})
+                raw_geom = feat.get("geometry")
+                if not raw_geom:
+                    continue
 
-    insert_sql = text(
-        """
-        INSERT INTO landuse_predictions
-            (landuse, class_id, model_version, confidence, area_m2, source, geom)
-        VALUES
-            (:landuse, :class_id, :model_version, :confidence, :area_m2, :source,
-             ST_GeomFromText(:wkt, 4326))
-        """
-    )
+                geom_obj = shape(raw_geom)
+                if geom_obj.is_empty:
+                    continue
 
-    with engine.begin() as conn:
-        if replace_version:
-            conn.execute(
-                text("DELETE FROM landuse_predictions WHERE model_version = :ver"),
-                {"ver": model_version},
-            )
-        for idx in range(0, len(records), batch_size):
-            conn.execute(insert_sql, records[idx : idx + batch_size])
+                mpoly = _promote_to_multipolygon(geom_obj)
+                raw_landuse = str(
+                    props.get("landuse", props.get("landuse_class", "residential"))
+                ).lower()
+                if raw_landuse not in ("industrial", "residential"):
+                    raw_landuse = "residential"
 
-    return len(records)
+                confidence = float(
+                    props.get("la:confidence", props.get("confidence", 0.85))
+                )
+                area_m2 = float(props.get("area_m2", 0.0))
+                aoi_source = str(props.get("aoi_source", "kab_tangerang_2025"))
+
+                records.append(
+                    (
+                        raw_landuse,
+                        confidence,
+                        area_m2,
+                        model_version,
+                        aoi_source,
+                        mpoly.wkt,
+                    )
+                )
+
+            # Insert in batches using ST_GeomFromText
+            insert_sql = """
+                INSERT INTO landuse_predictions
+                    (landuse_class, confidence, area_m2, model_version, aoi_source, geom)
+                VALUES
+                    ($1, $2, $3, $4, $5, ST_GeomFromText($6, 4326));
+            """
+            for i in range(0, len(records), batch_size):
+                batch = records[i : i + batch_size]
+                await conn.executemany(insert_sql, batch)
+
+            return len(records)
+    finally:
+        await conn.close()
 
 
 def ingest_geojson_to_postgis(
@@ -141,36 +143,41 @@ def ingest_geojson_to_postgis(
     replace_version: bool = True,
     batch_size: int = 500,
 ) -> int:
-    """Read a `.geojson` or `.gpkg` file and ingest into PostGIS."""
-    gdf = gpd.read_file(Path(geojson_path))
-    return ingest_gdf_to_postgis(
-        gdf=gdf,
-        db_url=db_url,
-        model_version=model_version,
-        replace_version=replace_version,
-        batch_size=batch_size,
+    """Read a `.geojson` file and ingest into PostGIS using asyncpg."""
+    with open(geojson_path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    features = data.get("features", [])
+    return asyncio.run(
+        ingest_features_to_postgis(
+            features=features,
+            db_url=db_url,
+            model_version=model_version,
+            replace_version=replace_version,
+            batch_size=batch_size,
+        )
     )
 
 
 def main() -> None:
     """CLI entrypoint for ingesting vectorized LandAssist predictions into PostGIS."""
     parser = argparse.ArgumentParser(
-        description="Ingest LandAssist GeoJSON/GPKG polygons into PostGIS with version tagging."
+        description="Ingest LandAssist GeoJSON polygons into PostGIS with version tagging."
     )
     parser.add_argument(
         "--input",
         type=str,
         required=True,
-        help="Path to vectorized .geojson or .gpkg file.",
+        help="Path to vectorized .geojson file.",
     )
     parser.add_argument(
         "--db-url",
         type=str,
         default=os.environ.get(
             "DATABASE_URL",
-            "postgresql+psycopg2://landassist:landassist@localhost:5432/landassist",
+            "postgresql://postgres:postgres@localhost:5432/postgres",
         ),
-        help="SQLAlchemy PostGIS connection string (defaults to $DATABASE_URL).",
+        help="PostGIS connection string (defaults to $DATABASE_URL).",
     )
     parser.add_argument(
         "--model-version",

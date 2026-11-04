@@ -183,7 +183,7 @@ def run_sliding_window_inference(
                 batch_np = np.stack(batch_chips, axis=0)  # (B, C, tile_size, tile_size)
                 batch_tensor = torch.from_numpy(batch_np).to(torch_device)
 
-                with torch.cuda.amp.autocast(enabled=use_amp):
+                with torch.amp.autocast(device_type=torch_device.type, enabled=use_amp):
                     outputs = model(pixel_values=batch_tensor)
                     logits = outputs.logits if hasattr(outputs, "logits") else outputs[0]
                     if logits.shape[-2:] != (tile_size, tile_size):

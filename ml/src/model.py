@@ -46,6 +46,22 @@ def _build_mit_b2_config(num_classes: int = 3) -> SegformerConfig:
     )
 
 
+def _get_first_patch_embedding(model: SegformerForSemanticSegmentation) -> nn.Module:
+    """Resolve the Stage-0 patch embedding module across transformers v4 and v5+."""
+    segformer = model.segformer
+    if hasattr(segformer, "stages") and len(segformer.stages) > 0:
+        return segformer.stages[0].patch_embeddings
+    if hasattr(segformer, "encoder"):
+        encoder = segformer.encoder
+        if hasattr(encoder, "patch_embeddings") and len(encoder.patch_embeddings) > 0:
+            return encoder.patch_embeddings[0]
+        if hasattr(encoder, "patch_embed") and len(encoder.patch_embed) > 0:
+            return encoder.patch_embed[0]
+    raise AttributeError(
+        f"Cannot locate first patch embedding on {type(segformer).__name__}"
+    )
+
+
 def build_segformer_64ch(
     model_name: str = "nvidia/mit-b2",
     num_classes: int = 3,
@@ -54,10 +70,11 @@ def build_segformer_64ch(
 ) -> SegformerForSemanticSegmentation:
     """Build a SegFormer semantic segmentation model adapted for 64-band GSE inputs.
 
-    Adapts the first patch embedding layer (`model.segformer.encoder.patch_embed[0].proj`)
-    from 3 RGB channels to `in_channels` (default 64) by repeating the mean RGB
-    convolutional kernel weights across all input channels and scaling by
-    `3.0 / in_channels` to preserve activation variance in early layers.
+    Adapts the first patch embedding layer (`stages[0].patch_embeddings.proj` in
+    transformers v5+ or `encoder.patch_embeddings[0].proj` in v4) from 3 RGB
+    channels to `in_channels` (default 64) by repeating the mean RGB convolutional
+    kernel weights across all input channels and scaling by `3.0 / in_channels`
+    to preserve activation variance in early layers.
 
     Args:
         model_name: HuggingFace model identifier (e.g., `"nvidia/mit-b2"`).
@@ -73,11 +90,15 @@ def build_segformer_64ch(
     model: Optional[SegformerForSemanticSegmentation] = None
     if pretrained:
         try:
-            model = SegformerForSemanticSegmentation.from_pretrained(
+            cfg = SegformerConfig.from_pretrained(
                 model_name,
                 num_labels=num_classes,
                 id2label=ID2LABEL,
                 label2id=LABEL2ID,
+            )
+            model = SegformerForSemanticSegmentation.from_pretrained(
+                model_name,
+                config=cfg,
                 ignore_mismatched_sizes=True,
             )
         except Exception:
@@ -87,7 +108,8 @@ def build_segformer_64ch(
         config = _build_mit_b2_config(num_classes=num_classes)
         model = SegformerForSemanticSegmentation(config)
 
-    old_proj: nn.Conv2d = model.segformer.encoder.patch_embed[0].proj
+    patch_embed_0 = _get_first_patch_embedding(model)
+    old_proj: nn.Conv2d = patch_embed_0.proj
     new_proj = nn.Conv2d(
         in_channels=in_channels,
         out_channels=old_proj.out_channels,
@@ -108,7 +130,7 @@ def build_segformer_64ch(
         if old_proj.bias is not None and new_proj.bias is not None:
             new_proj.bias.copy_(old_proj.bias)
 
-    model.segformer.encoder.patch_embed[0].proj = new_proj
+    patch_embed_0.proj = new_proj
     model.config.num_channels = in_channels
     return model
 

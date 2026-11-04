@@ -2,13 +2,18 @@
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
 from app.db import db
 from app.routers import geojson, health, tiles
+
+REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+FRONTEND_DIST = REPO_ROOT / "frontend" / "dist"
 
 
 @asynccontextmanager
@@ -43,3 +48,7 @@ app.add_middleware(
 app.include_router(health.router)
 app.include_router(geojson.router)
 app.include_router(tiles.router)
+
+# Mount custom Rapid Editor frontend directly under /editor
+if FRONTEND_DIST.exists():
+    app.mount("/editor", StaticFiles(directory=str(FRONTEND_DIST), html=True), name="editor")

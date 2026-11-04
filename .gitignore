@@ -55,6 +55,8 @@ cloudflared.exe
 pr_review_comment.md
 *.log
 docs/DEEP_DIVE_MENTOR_GUIDE.md
+docs/LANDASSIST_WEB_EDITOR_BLUEPRINT.md
+docs/*BLUEPRINT*.md
 tmp_mmap*/
 outputs/*
 !outputs/tangerang_v1.0.0.geojson

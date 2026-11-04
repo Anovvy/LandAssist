@@ -67,7 +67,7 @@ def init_earth_engine(
     ):
         _load_dotenv_if_present(env_cand)
 
-    proj = project_id or os.environ.get("EE_PROJECT_ID")
+    proj = project_id or os.environ.get("EE_PROJECT_ID") or "landassist-511504"
     sa_env = service_account_key or os.environ.get("EE_SERVICE_ACCOUNT_KEY")
 
     # If raw JSON string was provided in the environment variable, authenticate directly
@@ -96,6 +96,9 @@ def init_earth_engine(
             pass
     candidate_paths.extend(
         [
+            Path("/content/credentials.json"),
+            Path("/content/LandAssist/credentials.json"),
+            Path("/content/service_account.json"),
             REPO_ROOT / "credentials.json",
             REPO_ROOT / "service_account.json",
             REPO_ROOT.parent / "LandAssist Data Prep" / "credentials.json",
@@ -188,6 +191,11 @@ def download_gse_64band_geotiff(
         return out_tif
 
     min_lon, min_lat, max_lon, max_lat = bbox
+    try:
+        ee.data.getAlgorithms()
+    except Exception:
+        init_earth_engine()
+
     if polygon_coords is not None:
         aoi_geom = ee.Geometry.Polygon([list(polygon_coords)])
     else:

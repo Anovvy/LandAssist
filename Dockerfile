@@ -13,7 +13,6 @@ RUN pip install --no-cache-dir --upgrade pip && \
 
 COPY backend/app ./app
 COPY frontend/dist ./frontend/dist
-COPY outputs/tangerang_v1.0.0.geojson ./outputs/tangerang_v1.0.0.geojson
 
 RUN chown -R landassist:landassist /app
 

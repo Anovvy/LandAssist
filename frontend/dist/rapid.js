@@ -99015,12 +99015,21 @@ ${e3}`);
     render(frame2, viewport, zoom) {
       const context2 = this.context;
       const osm = context2.services.osm;
-      if (!this.enabled || !osm?.started || zoom < MINZOOM9) return;
       const editor = context2.systems.editor;
+      const hasWork = editor ? editor.hasWork() : false;
+      if (!this.enabled && !hasWork) return;
+      if (!osm?.started || zoom < MINZOOM9) return;
       const filters = context2.systems.filters;
       const graph = editor.staging.graph;
-      context2.loadTiles();
+      if (this.enabled) {
+        context2.loadTiles();
+      }
       let entities = editor.intersects(context2.viewport.visibleExtent());
+      if (!this.enabled) {
+        // Base OSM layer is hidden for performance, but KEEP USER'S UNCOMMITTED EDITS VISIBLE!
+        const modifiedIDs = new Set(editor.difference().summary().keys());
+        entities = entities.filter((e) => modifiedIDs.has(e.id));
+      }
       entities = filters.filterScene(entities, graph);
       const data = {
         polygons: /* @__PURE__ */ new Map(),
@@ -115428,7 +115437,7 @@ ${e3}`);
       const scene = context2.systems.gfx.scene;
       const storage = context2.systems.storage;
       const showThirdPartyIcons = (storage.getItem("preferences.privacy.thirdpartyicons") ?? "true") === "true";
-      const isRapidEnabled = scene.layers.get("rapid")?.enabled;
+      const isRapidEnabled = scene.layers.get("custom-data")?.enabled || scene.layers.get("rapid")?.enabled;
       let $wrap = $parent.selectAll(".attribution-wrap").data([0]);
       const $$wrap = $wrap.enter().append("div").attr("class", "attribution-wrap");
       $wrap = $wrap.merge($$wrap);
@@ -115449,7 +115458,7 @@ ${e3}`);
           id: "__rapid_data",
           overlay: true,
           terms_text: l10n.t("map_data.layers.rapid.license"),
-          terms_url: "https://rapideditor.org/doc/license/MapWithAILicense.pdf"
+          terms_url: "/docs"
         });
       }
       let $sections = $wrap.selectAll(".attribution-section").data(data, (d2) => d2.id);
@@ -116459,7 +116468,7 @@ ${e3}`);
       const detected = utilDetect();
       const tags = {
         comment: storage.getItem("comment") || "",
-        created_by: context2.cleanTagValue("Rapid " + context2.version),
+        created_by: context2.cleanTagValue("LandAssist Web Editor " + context2.version),
         host: context2.cleanTagValue(detected.host),
         locale: context2.cleanTagValue(localeCode)
       };
@@ -117150,15 +117159,68 @@ ${e3}`);
         selectedIDs: [way.id]
       });
 
-      // Remove datum from custom data layer so it ceases to be an unaccepted AI overlay
+      // Reactive Undo/Redo sync: associate datum with way.id so Ctrl+Z dynamically restores it
+      _datum.__acceptedWayId = way.id;
+      const acceptedDatum = _datum;
+      const acceptedWayId = way.id;
+
+      let numericPredId = null;
+      if (rawProps["la:id"]) {
+        numericPredId = parseInt(rawProps["la:id"], 10);
+      } else if (typeof _datum.id === "string" && _datum.id.startsWith("landassist_")) {
+        numericPredId = parseInt(_datum.id.replace("landassist_", ""), 10);
+      } else if (typeof _datum.id === "number") {
+        numericPredId = _datum.id;
+      }
+      if (numericPredId && !isNaN(numericPredId)) {
+        acceptedDatum.__numericPredId = numericPredId;
+        fetch("/v1/predictions/" + numericPredId + "/stage", { method: "POST" }).catch(() => {});
+      }
+
       try {
         const scene = context2.scene ? context2.scene() : context2.systems?.gfx?.scene;
         const customDataLayer = scene?.layers?.get("custom-data");
-        if (customDataLayer && customDataLayer._geojson && customDataLayer._geojson.features) {
-          customDataLayer._geojson.features = customDataLayer._geojson.features.filter(function(f) {
-            return f !== _datum && f.id !== _datum.id;
-          });
-          if (customDataLayer.dirty) customDataLayer.dirty();
+        if (customDataLayer) {
+          if (!customDataLayer._acceptedFeaturesMap) {
+            customDataLayer._acceptedFeaturesMap = new Map();
+          }
+          customDataLayer._acceptedFeaturesMap.set(acceptedWayId, acceptedDatum);
+
+          if (!customDataLayer._undoListenerAttached) {
+            customDataLayer._undoListenerAttached = true;
+            editorSystem.on("change", () => {
+              const currentGraph = editorSystem.staging.graph;
+              if (customDataLayer._acceptedFeaturesMap && customDataLayer._geojson?.features) {
+                let changed = false;
+                for (const [wId, feat] of customDataLayer._acceptedFeaturesMap.entries()) {
+                  const stillInGraph = currentGraph.hasEntity(wId);
+                  const isPresent = customDataLayer._geojson.features.some(f => f === feat || f.id === feat.id);
+                  if (!stillInGraph && !isPresent) {
+                    // Way was undone via Ctrl+Z -> restore candidate back to AI layer!
+                    customDataLayer._geojson.features.push(feat);
+                    changed = true;
+                    if (feat.__numericPredId) {
+                      fetch("/v1/predictions/" + feat.__numericPredId + "/revert", { method: "POST" }).catch(() => {});
+                    }
+                  } else if (stillInGraph && isPresent) {
+                    // Way was redone via Ctrl+Y -> hide candidate
+                    customDataLayer._geojson.features = customDataLayer._geojson.features.filter(f => f !== feat && f.id !== feat.id);
+                    changed = true;
+                  }
+                }
+                if (changed && customDataLayer.dirty) {
+                  customDataLayer.dirty();
+                }
+              }
+            });
+          }
+
+          if (customDataLayer._geojson && customDataLayer._geojson.features) {
+            customDataLayer._geojson.features = customDataLayer._geojson.features.filter(function(f) {
+              return f !== _datum && f.id !== _datum.id;
+            });
+            if (customDataLayer.dirty) customDataLayer.dirty();
+          }
         }
       } catch (err) {
         console.warn("[LandAssist] Layer refresh note:", err);
@@ -117169,6 +117231,18 @@ ${e3}`);
 
     function ignoreFeature() {
       try {
+        const rawProps = (_datum && _datum.properties) || {};
+        let numId = null;
+        if (rawProps["la:id"]) {
+          numId = parseInt(rawProps["la:id"], 10);
+        } else if (typeof _datum.id === "string" && _datum.id.startsWith("landassist_")) {
+          numId = parseInt(_datum.id.replace("landassist_", ""), 10);
+        } else if (typeof _datum.id === "number") {
+          numId = _datum.id;
+        }
+        if (numId && !isNaN(numId)) {
+          fetch("/v1/predictions/" + numId + "/reject", { method: "POST" }).catch(() => {});
+        }
         const scene = context2.scene ? context2.scene() : context2.systems?.gfx?.scene;
         const customDataLayer = scene?.layers?.get("custom-data");
         if (customDataLayer && customDataLayer._geojson && customDataLayer._geojson.features) {
@@ -129215,12 +129289,31 @@ ${url_tokens}
       container.enter().append("div").attr("class", "data-layer-container").merge(container).call(drawBaseItems).call(drawQAItems).call(drawCustomDataItems).call(drawPanelItems);
     }
     function showsLayer(layerID) {
+      if (layerID === "rapid" || layerID === "landassist") {
+        const customLayer = scene.layers.get("custom-data");
+        if (customLayer) return customLayer.enabled;
+        const rapidLayer = scene.layers.get("rapid");
+        return rapidLayer?.enabled ?? true;
+      }
       const layer = scene.layers.get(layerID);
       return layer?.enabled;
     }
     function setLayer(layerID, val) {
       const mode2 = context2.mode;
       if (mode2 && /^draw/.test(mode2.id)) return;
+      if (layerID === "rapid" || layerID === "landassist") {
+        const customLayer = scene.layers.get("custom-data");
+        if (customLayer) {
+          if (val) scene.enableLayers("custom-data");
+          else scene.disableLayers("custom-data");
+        }
+        const rapidLayer = scene.layers.get("rapid");
+        if (rapidLayer) {
+          if (val) scene.enableLayers("rapid");
+          else scene.disableLayers("rapid");
+        }
+        return;
+      }
       if (val) {
         scene.enableLayers(layerID);
       } else {
@@ -129263,11 +129356,11 @@ ${url_tokens}
       let liEnter = li.enter().append("li").attr("class", (d2) => `list-item list-item-${d2.id}`);
       let labelEnter = liEnter.append("label").each((d2, i3, nodes) => {
         select_default2(nodes[i3]).call(
-          uiTooltip(context2).title(l10n.t(`map_data.layers.${d2.id}.tooltip`)).shortcut(utilCmd("\u21E7" + l10n.t(d2.key))).placement("bottom")
+          uiTooltip(context2).title(d2.id === "rapid" ? "Display LandAssist SegFormer AI Landuse prediction layers" : l10n.t(`map_data.layers.${d2.id}.tooltip`)).shortcut(utilCmd("\u21E7" + l10n.t(d2.key))).placement("bottom")
         );
       });
       labelEnter.append("input").attr("type", "checkbox").on("change", (e3, d2) => toggleLayer(d2.id));
-      labelEnter.append("span").text((d2) => l10n.t(`map_data.layers.${d2.id}.title`));
+      labelEnter.append("span").text((d2) => (d2.id === "rapid" ? "LandAssist AI Features" : l10n.t(`map_data.layers.${d2.id}.title`)));
       li.merge(liEnter).classed("active", (d2) => showsLayer(d2.id)).selectAll("input").property("checked", (d2) => showsLayer(d2.id));
     }
     function drawQAItems(selection2) {
@@ -132568,10 +132661,10 @@ ${url_tokens}
       
       const $line1 = $feat1.append("div").attr("class", "rapid-feature-label-container").style("display", "flex").style("align-items", "center").style("gap", "8px");
       $line1.append("div").style("font-weight", "800").style("font-size", "14px").style("color", "#38bdf8").text("Landuse Predictions (SegFormer AI)");
-      $line1.append("span").style("font-size", "10px").style("padding", "2px 6px").style("border-radius", "10px").style("background", "rgba(16, 185, 129, 0.2)").style("color", "#10b981").style("border", "1px solid rgba(16, 185, 129, 0.4)").style("font-weight", "600").text("Live PostGIS");
+      $line1.append("span").style("font-size", "10px").style("padding", "2px 6px").style("border-radius", "10px").style("background", "rgba(16, 185, 129, 0.2)").style("color", "#10b981").style("border", "1px solid rgba(16, 185, 129, 0.4)").style("font-weight", "600").text("v1.1.0 • 2,460 Parcels");
 
       const $line2 = $feat1.append("div").style("margin-top", "4px").style("font-size", "12px").style("color", "#94a3b8");
-      $line2.text("Model SegFormer MIT-B2 (mIoU 74.2%) • Sentinel-2 GSE 64-Band");
+      $line2.text("Kabupaten Tangerang Regional Model v1.1.0 • SegFormer MIT-B2 (mIoU 74.2%) • Sentinel-2 GSE");
 
       // Swatches / Classes
       const $legend = $feat1.append("div").style("display", "flex").style("gap", "12px").style("margin-top", "6px").style("font-size", "11px");

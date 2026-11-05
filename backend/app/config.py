@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     app_name: str = "LandAssist OSM Rapid API"
     app_version: str = "0.1.0"
     database_url: str | None = None
-    default_model_version: str = "v1.0.0"
+    default_model_version: str = "v1.1.0"
     cors_origins: list[str] = ["*"]
     max_features_per_request: int = 5000
     osm_client_id: str | None = None

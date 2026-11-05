@@ -68,6 +68,10 @@ async def get_landuse_geojson(
         le=1.0,
         description="Minimum prediction confidence threshold [0.0, 1.0]",
     ),
+    status: str = Query(
+        default="unreviewed",
+        description="Filter by lifecycle status: 'unreviewed', 'staged', 'accepted', 'rejected', or 'all'",
+    ),
 ) -> JSONResponse:
     """Serve OSM-tagged land-use polygons as a GeoJSON FeatureCollection for Rapid Editor."""
     parsed_bbox = parse_bbox(bbox)
@@ -76,6 +80,7 @@ async def get_landuse_geojson(
         model_version=version,
         landuse=landuse,
         min_confidence=min_confidence,
+        status=status,
         limit=settings.max_features_per_request,
     )
 

@@ -32,7 +32,7 @@
         <span style="font-size:18px;">🛰️</span>
         <div>
           <div style="font-size:13px; font-weight:800; color:#38bdf8; letter-spacing:0.02em;">LandAssist <span style="color:#10b981; font-weight:600;">Web Editor</span></div>
-          <div style="font-size:10px; color:#94a3b8;">Kabupaten Tangerang • SegFormer GSE 64-Band</div>
+          <div style="font-size:10px; color:#94a3b8;">Kabupaten Tangerang (v1.1.0 • 2,460 Parcels) • SegFormer GSE</div>
         </div>
       </div>
       <div style="height:22px; width:1px; background:rgba(255,255,255,0.15);"></div>
@@ -42,6 +42,11 @@
       </div>
       <a href="/docs" target="_blank" style="font-size:11px; color:#cbd5e1; text-decoration:none; padding:3px 8px; border-radius:5px; background:rgba(255,255,255,0.08); transition:background 0.2s;">Swagger API</a>
       <a href="/qa" target="_blank" style="font-size:11px; color:#cbd5e1; text-decoration:none; padding:3px 8px; border-radius:5px; background:rgba(255,255,255,0.08); transition:background 0.2s;">QA Viewer</a>
+      <div style="height:22px; width:1px; background:rgba(255,255,255,0.15);"></div>
+      <button id="btn-focus-landuse" onclick="window.toggleLanduseFocus()" title="Toggle Focus Mode (Shift+F): Hides buildings and roads for 60FPS zooming and clear imagery comparison" style="display:flex; align-items:center; gap:6px; font-size:11px; font-weight:700; color:#38bdf8; background:rgba(56,189,248,0.15); border:1px solid rgba(56,189,248,0.4); border-radius:6px; padding:4px 10px; cursor:pointer; transition:all 0.2s;">
+        <span>🎯</span>
+        <span id="txt-focus-mode">Focus Landuse: OFF</span>
+      </button>
     </div>
 
     <div id='rapid-container'></div>

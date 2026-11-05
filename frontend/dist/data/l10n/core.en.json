@@ -26,7 +26,7 @@
       "recent": "Recent",
       "favorites": "Favorites",
       "add_feature": "Add Feature",
-      "rapid_features": "Assist"
+      "rapid_features": "AI Assist"
     },
     "title": {
       "format": {
@@ -1007,9 +1007,9 @@
           "title": "OpenStreetMap Notes"
         },
         "rapid": {
-          "tooltip": "Suggested features detected from machine learning and open data that can be used to improve OpenStreetMap",
-          "title": "Rapid Features",
-          "license": "Facebook's Map With AI License"
+          "tooltip": "Display LandAssist SegFormer AI Landuse prediction layers",
+          "title": "LandAssist AI Features",
+          "license": "LandAssist AI (Sentinel-2 GSE)"
         },
         "maproulette": {
           "tooltip": "Tasks from maproulette.org.  You can also enter a comma-separated list of challenge IDs to filter.",
@@ -1355,8 +1355,8 @@
       "cancel": "Cancel"
     },
     "splash": {
-      "welcome": "Welcome to {rapidicon} {version}!",
-      "text": "Rapid is a friendly but powerful editor for OpenStreetMap, a free map of the world. If this is your first time here, click the button below to start the tutorial. Anyone can be a mapper!\n\nFor more information visit our [changelog](https://github.com/facebook/Rapid/blob/main/CHANGELOG.md#whats-new) and [issue tracker](https://github.com/facebook/Rapid/issues) on GitHub. Happy Mapping! 👍",
+      "welcome": "Welcome to LandAssist Web Editor!",
+      "text": "LandAssist Web Editor is an AI-assisted editor for OpenStreetMap, powered by SegFormer deep learning land-use predictions.",
       "privacy_update": "*Our privacy policy has recently been updated.*",
       "privacy": "By using this software, you agree to do so in accordance with the [Rapid privacy policy](https://github.com/facebook/Rapid/blob/main/PRIVACY.md).",
       "walkthrough": "Start the Tutorial",
@@ -1395,7 +1395,7 @@
       "option_accept": {
         "label": "Add This Feature",
         "description": "Does this look like an accurate feature? Select this to start editing it so that you can connect, tag, and save it to OpenStreetMap. 👍",
-        "annotation": "Added a Rapid feature.",
+        "annotation": "Added a LandAssist AI feature.",
         "tooltip": "Add this feature to the map to begin editing.",
         "disabled": "To help improve OSM data quality, we only allow {n} AI features to be added in each mapping session. Please try to fix issues on your edits so far. You will be able to add more AI features after saving.",
         "disabled_flash": "To help improve OSM data quality, we only allow {n} AI Features to be added in each mapping session."
@@ -1403,13 +1403,13 @@
       "option_ignore": {
         "label": "Ignore This Feature",
         "description": "Ignoring this feature helps us improve our machine learning. If you are unsure whether or not this is an accurate feature, feel free to leave it as is, nothing will be saved or lost. 👍",
-        "annotation": "Ignored a Rapid feature.",
+        "annotation": "Ignored a LandAssist AI feature.",
         "tooltip": "Ignore this feature."
       }
     },
     "rapid_menu": {
       "license": "License",
-      "toggle_all": "Toggle all {rapidicon} data",
+      "toggle_all": "Toggle all LandAssist AI data",
       "add_manage_datasets": "Add/Manage Datasets",
       "center_map": "Center map here",
       "worldwide": "Worldwide",
@@ -1507,7 +1507,7 @@
       }
     },
     "version": {
-      "whats_new": "What's new in Rapid {version}"
+      "whats_new": "What's new in LandAssist Web Editor {version}"
     },
     "tag_reference": {
       "description": "Description",
@@ -1986,14 +1986,14 @@
       "title": "Help",
       "help": {
         "title": "Help",
-        "welcome": "Welcome to the {rapidicon} editor for [OpenStreetMap](https://www.openstreetmap.org/). With this editor you can update OpenStreetMap right from your web browser.",
+        "welcome": "Welcome to the LandAssist Web Editor for OpenStreetMap.",
         "open_data_h": "Open Data",
         "open_data": "Edits that you make on this map will be visible to everyone who uses OpenStreetMap. Your edits can be based on personal knowledge, on-the-ground surveying, or imagery collected from aerial or street level photos. Copying from commercial sources, like Google Maps, [is strictly forbidden](https://www.openstreetmap.org/copyright).",
         "before_start_h": "Before you start",
         "before_start": "You should be familiar with OpenStreetMap and this editor before you start editing. Rapid contains a walkthrough to teach you the basics of editing OpenStreetMap. Press the \"{start_the_walkthrough}\" button on this screen to start the tutorial—it takes only about 15 minutes.",
         "open_source_h": "Open Source",
-        "open_source": "The Rapid editor is a collaborative open source project, and you are using version {version} now. The source code is available [on GitHub](https://github.com/facebook/Rapid).",
-        "open_source_help": "You can help Rapid by [reporting bugs](https://github.com/facebook/Rapid/issues)."
+        "open_source": "The LandAssist Web Editor is a specialized AI-assisted OpenStreetMap web editor based on the modern OpenStreetMap iD editor architecture.",
+        "open_source_help": "You can report issues on the LandAssist repository."
       },
       "overview": {
         "title": "Overview",
@@ -3083,10 +3083,10 @@
         "play": "Great Job! Practice tracing a few more buildings, and try some of the other operations in the edit menu. **When you are ready to continue to the next chapter, press '{next}'.**"
       },
       "rapid": {
-        "title": "Rapid Features",
+        "title": "LandAssist AI Features",
         "start": "{rapid} features are suggestions for features that may be missing from OpenStreetMap.  These features are found in open datasets or detected from imagery with machine-learning algorithms. This section of the walkthrough will teach you how to use these suggested features.",
-        "ai_roads": "Rapid features are presented in a magenta-colored overlay. Press 'OK' to enable the Rapid features layer. (These feature layers can also be toggled with the {rapid} button up above).",
-        "add_road_h": "Adding Rapid features",
+        "ai_roads": "LandAssist AI features are presented in a colored overlay. Press 'OK' to enable the LandAssist AI features layer.",
+        "add_road_h": "Adding LandAssist features",
         "select_road": "A single Rapid suggested road has shown up on the map. **Select the road with a left-click.**",
         "add_road": "Click the 'Add this Feature' button to add the road to the working map.",
         "add_road_not_saved_yet": "The road has been added as a change to the map. Like any other map change, it will not show up for others until you save it.",
@@ -3141,7 +3141,7 @@
       "with_features_selected": "With features selected",
       "with_node_selected": "With node selected",
       "with_way_selected": "With way selected",
-      "with_rapid_selected": "With Rapid feature selected",
+      "with_rapid_selected": "With LandAssist feature selected",
       "with_photo_selected": "With photo selected",
       "drawing": "Drawing",
       "commands": "Commands",
@@ -3392,7 +3392,7 @@
           "key": "N"
         },
         "toggle_rapid_data": {
-          "label": "Toggle Rapid features",
+          "label": "Toggle LandAssist AI Features",
           "key": "R"
         },
         "toggle_mapillary": {

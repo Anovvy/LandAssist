@@ -69,3 +69,6 @@ weights/
 Thumbs.db
 .vscode/
 .idea/
+
+scratch/
+!outputs/tangerang_v1.1.0.geojson

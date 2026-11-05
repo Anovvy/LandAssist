@@ -13,11 +13,15 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
-LOCAL_GEOJSON_PATH = REPO_ROOT / "outputs" / "tangerang_v1.0.0.geojson"
+LOCAL_GEOJSON_PATH = REPO_ROOT / "outputs" / "tangerang_v1.1.0.geojson"
 if not LOCAL_GEOJSON_PATH.exists():
-    _app_outputs = Path(__file__).resolve().parent.parent / "outputs" / "tangerang_v1.0.0.geojson"
+    LOCAL_GEOJSON_PATH = REPO_ROOT / "outputs" / "tangerang_v1.0.0.geojson"
+if not LOCAL_GEOJSON_PATH.exists():
+    _app_outputs = Path(__file__).resolve().parent.parent / "outputs" / "tangerang_v1.1.0.geojson"
     if _app_outputs.exists():
         LOCAL_GEOJSON_PATH = _app_outputs
+    else:
+        LOCAL_GEOJSON_PATH = Path(__file__).resolve().parent.parent / "outputs" / "tangerang_v1.0.0.geojson"
 
 # Built-in realistic demo polygons for Kabupaten Tangerang (EPSG:4326)
 # Enables zero-config CI testing, local development, and offline Rapid Editor demos
@@ -233,15 +237,18 @@ class DatabaseManager:
                 rows = await conn.fetch(query)
                 return [dict(r) for r in rows]
 
+        versions_map: dict[str, list[float]] = {}
+        for f in DEMO_FEATURES:
+            ver = f.get("model_version", "v1.1.0")
+            versions_map.setdefault(ver, []).append(f.get("confidence", 0.75))
         return [
             {
-                "model_version": "v1.0.0",
-                "feature_count": len(DEMO_FEATURES),
-                "avg_confidence": round(
-                    sum(f["confidence"] for f in DEMO_FEATURES) / len(DEMO_FEATURES), 4
-                ),
-                "latest_created_at": "2025-05-01T00:00:00Z",
+                "model_version": ver,
+                "feature_count": len(confs),
+                "avg_confidence": round(sum(confs) / len(confs), 4),
+                "latest_created_at": "2026-11-05T00:00:00Z",
             }
+            for ver, confs in sorted(versions_map.items(), reverse=True)
         ]
 
     async def query_geojson_features(
@@ -250,10 +257,12 @@ class DatabaseManager:
         model_version: str,
         landuse: str | None = None,
         min_confidence: float = 0.0,
+        status: str | None = "unreviewed",
         limit: int = 5000,
     ) -> list[dict[str, Any]]:
         """Query OSM-tagged GeoJSON Features within a WGS84 bounding box."""
         min_lon, min_lat, max_lon, max_lat = bbox
+        status_filter = None if status in (None, "all", "*") else status
 
         if self.pool is not None:
             query = """
@@ -263,11 +272,13 @@ class DatabaseManager:
                     confidence,
                     area_m2,
                     model_version,
+                    status,
                     ST_AsGeoJSON(geom, 6) AS geom_json
                 FROM landuse_predictions
                 WHERE model_version = $5
                   AND confidence >= $6
                   AND ($7::varchar IS NULL OR landuse_class = $7)
+                  AND ($9::varchar IS NULL OR status = $9)
                   AND ST_Intersects(
                       geom,
                       ST_MakeEnvelope($1, $2, $3, $4, 4326)
@@ -286,6 +297,7 @@ class DatabaseManager:
                     min_confidence,
                     landuse,
                     limit,
+                    status_filter,
                 )
 
             features: list[dict[str, Any]] = []
@@ -297,7 +309,9 @@ class DatabaseManager:
                         "properties": {
                             "landuse": row["landuse_class"],
                             "source": "LandAssist AI (Sentinel-2 + GSE)",
+                            "la:id": row["id"],
                             "la:version": row["model_version"],
+                            "la:status": row.get("status", "unreviewed") or "unreviewed",
                             "la:confidence": round(float(row["confidence"]), 4),
                             "area_m2": round(float(row["area_m2"]), 1),
                         },
@@ -314,6 +328,8 @@ class DatabaseManager:
             if item["confidence"] < min_confidence:
                 continue
             if landuse and item["landuse_class"] != landuse:
+                continue
+            if status_filter and item.get("status", "unreviewed") != status_filter:
                 continue
             f_min_lon, f_min_lat, f_max_lon, f_max_lat = item["bbox"]
             intersects = not (
@@ -332,7 +348,9 @@ class DatabaseManager:
                     "properties": {
                         "landuse": item["landuse_class"],
                         "source": "LandAssist AI (Sentinel-2 + GSE)",
+                        "la:id": item["id"],
                         "la:version": item["model_version"],
+                        "la:status": item.get("status", "unreviewed") or "unreviewed",
                         "la:confidence": round(float(item["confidence"]), 4),
                         "area_m2": round(float(item["area_m2"]), 1),
                     },
@@ -343,6 +361,71 @@ class DatabaseManager:
                 break
 
         return features
+
+    async def update_prediction_status(
+        self,
+        prediction_id: int,
+        status: str,
+        reviewed_by: str | None = None,
+        osm_id: int | None = None,
+    ) -> bool:
+        """Update lifecycle status of a prediction (unreviewed, staged, accepted, rejected)."""
+        if self.pool is not None:
+            query = """
+                UPDATE landuse_predictions
+                SET status = $2,
+                    reviewed_by = COALESCE($3, reviewed_by),
+                    reviewed_at = CASE WHEN $2 IN ('staged', 'accepted', 'rejected') THEN NOW() ELSE NULL END,
+                    osm_id = COALESCE($4, osm_id)
+                WHERE id = $1;
+            """
+            async with self.pool.acquire() as conn:
+                res = await conn.execute(query, prediction_id, status, reviewed_by, osm_id)
+                return "UPDATE 1" in res
+
+        # Fallback in-memory
+        for item in DEMO_FEATURES:
+            if item["id"] == prediction_id:
+                item["status"] = status
+                item["reviewed_by"] = reviewed_by
+                item["osm_id"] = osm_id
+                return True
+        return False
+
+    async def batch_commit_predictions(
+        self,
+        items: list[dict[str, Any]],
+        reviewed_by: str | None = None,
+    ) -> int:
+        """Mark multiple predictions as accepted after changeset commit."""
+        if not items:
+            return 0
+
+        updated = 0
+        if self.pool is not None:
+            query = """
+                UPDATE landuse_predictions
+                SET status = 'accepted',
+                    reviewed_by = COALESCE($2, reviewed_by),
+                    reviewed_at = NOW(),
+                    osm_id = $3
+                WHERE id = $1;
+            """
+            async with self.pool.acquire() as conn:
+                for item in items:
+                    res = await conn.execute(query, item["id"], reviewed_by, item.get("osm_id"))
+                    if "UPDATE 1" in res:
+                        updated += 1
+            return updated
+
+        # Fallback in-memory
+        item_ids = {it["id"] for it in items}
+        for it in DEMO_FEATURES:
+            if it["id"] in item_ids:
+                it["status"] = "accepted"
+                it["reviewed_by"] = reviewed_by
+                updated += 1
+        return updated
 
     async def query_mvt_tile(
         self,

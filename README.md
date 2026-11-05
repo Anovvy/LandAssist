@@ -51,7 +51,7 @@ Raw raster predictions are converted into cartographically clean, topology-valid
 The **LandAssist Web Editor** is an interactive, browser-based OpenStreetMap editing studio powered by a customized iD / Rapid open-source mapping engine.
 
 ### Step 1: Open the Live Editor
-Visit **[https://landassist-api.onrender.com/editor/](https://landassist-api.onrender.com/editor/#map=14.50/-6.2200/106.5000)**. The map automatically loads the high-resolution satellite imagery basemap centered on Kabupaten Tangerang (`106.50, -6.22` at zoom level 14.5) with AI predictions pre-loaded.
+Visit **[https://landassist-api.onrender.com/editor/](https://landassist-api.onrender.com/editor/#map=14.50/-6.2200/106.5000)**. The map automatically loads the high-resolution satellite imagery basemap centered on Kabupaten Tangerang (`106.50, -6.22` at zoom level 14.5) with full regional **v1.1.0** AI predictions (2,460 parcels) pre-loaded.
 
 ### Step 2: Explore AI Landuse Layers
 In the top toolbar, click the **LandAssist (AI Assist)** button:
@@ -71,7 +71,7 @@ In the top toolbar, click the **LandAssist (AI Assist)** button:
      landuse = industrial   (or residential)
      source = LandAssist AI (Sentinel-2 GSE)
      source:date = 2026-11
-     model_version = v1.0.0
+     model_version = v1.1.0
      ```
    - The polygon dynamically assumes native iD editor preset styling (amber for residential, purple for industrial).
    - The edit is committed to the local history stack, and the top-right **Save** button counter immediately increments (`1`, `2`, ...).

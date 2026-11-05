@@ -54,6 +54,9 @@ cloudflared.exe
 *.exe
 pr_review_comment.md
 *.log
+scripts/find_*.py
+scripts/inspect_*.py
+scripts/check_*.py
 docs/DEEP_DIVE_MENTOR_GUIDE.md
 docs/LANDASSIST_WEB_EDITOR_BLUEPRINT.md
 docs/*BLUEPRINT*.md

@@ -1,6 +1,7 @@
 """OAuth 2.0 dynamic configuration router for LandAssist Web Editor."""
 
 from typing import Any
+
 from fastapi import APIRouter
 
 from app.config import settings

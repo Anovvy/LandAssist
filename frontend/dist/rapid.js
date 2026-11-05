@@ -114105,8 +114105,8 @@ ${e3}`);
           }
         }
         if (!urlhash.initialHashParams.has("datasets")) {
-          this._addedDatasetIDs = /* @__PURE__ */ new Set(["ml-buildings-overture", "esri-buildings"]);
-          this._enabledDatasetIDs = /* @__PURE__ */ new Set(["ml-buildings-overture"]);
+          this._addedDatasetIDs = /* @__PURE__ */ new Set();
+          this._enabledDatasetIDs = /* @__PURE__ */ new Set();
           this._datasetsChanged();
         }
         this._started = true;
@@ -133256,71 +133256,135 @@ ${url_tokens}
     }
   };
 
-  // modules/ui/tools/UiLandAssistBrandTool.js
-  var UiLandAssistBrandTool = class {
+  // modules/ui/tools/UiDataFilterTool.js
+  var UiDataFilterTool = class {
     constructor(context2) {
       this.context = context2;
-      this.id = "landassist_brand";
-      this.stringID = "toolbar.landassist_brand";
+      this.id = "data_filter";
+      this.stringID = "toolbar.data_filter";
       this.$parent = null;
       this.render = this.render.bind(this);
+      this.rerender = (() => this.render());
+      this.toggleFocus = this.toggleFocus.bind(this);
+      this.showAll = this.showAll.bind(this);
+      this.openPanel = this.openPanel.bind(this);
+
+      const filters = context2.systems.filters;
+      if (filters) {
+        filters.on("filterchange", this.rerender);
+      }
     }
+
+    isFocusActive() {
+      const filters = this.context.systems.filters;
+      if (!filters) return false;
+      return !filters.isEnabled("buildings") && filters.isEnabled("landuse");
+    }
+
+    toggleFocus(e) {
+      if (e) e.preventDefault();
+      const filters = this.context.systems.filters;
+      if (!filters) return;
+
+      if (this.isFocusActive()) {
+        filters.enableAll();
+      } else {
+        filters.disable("buildings");
+        filters.disable("building_parts");
+        filters.disable("traffic_roads");
+        filters.disable("service_roads");
+        filters.disable("paths");
+        filters.disable("points");
+        filters.disable("indoor");
+        filters.disable("power");
+        filters.disable("others");
+        filters.enable("landuse");
+        filters.enable("boundaries");
+        filters.enable("water");
+      }
+      this.rerender();
+    }
+
+    showAll(e) {
+      if (e) e.preventDefault();
+      const filters = this.context.systems.filters;
+      if (filters) {
+        filters.enableAll();
+      }
+      this.rerender();
+    }
+
+    openPanel(e) {
+      if (e) e.preventDefault();
+      const ui = this.context.systems.ui;
+      if (ui?.Overmap?.MapPanes?.MapData) {
+        ui.Overmap.MapPanes.MapData.togglePane();
+      }
+    }
+
     render($parent = this.$parent) {
       if ($parent instanceof selection_default) {
         this.$parent = $parent;
       } else {
         return;
       }
+      const isFocus = this.isFocusActive();
+
       let $joined = $parent.selectAll(".joined").data([0]);
       const $$joined = $joined.enter().append("div").attr("class", "joined").style("display", "flex");
       $joined = $joined.merge($$joined);
 
-      let $brand = $joined.selectAll("button.brand-btn").data([0]);
-      const $$brand = $brand.enter().append("button").attr("class", "bar-button brand-btn")
+      // Button 1: Focus Landuse & Boundaries Toggle
+      let $focusBtn = $joined.selectAll("button.focus-btn").data([0]);
+      const $$focusBtn = $focusBtn.enter().append("button")
+        .attr("class", "bar-button focus-btn")
         .style("cursor", "pointer")
         .style("display", "flex")
         .style("align-items", "center")
         .style("gap", "6px")
         .style("padding", "0 10px")
-        .attr("title", "LandAssist Web Editor — Model: SegFormer GSE • Pilot: Kabupaten Tangerang (v1.1.0 • 2,460 Parcels)")
-        .on("click", (e) => {
-          if (e) e.preventDefault();
-          this.context.systems.map.centerZoomEase([106.5000, -6.2200], 14.5);
-        });
-      $$brand.append("img").attr("src", "img/landassist_logo.jpg").attr("alt", "LandAssist").style("width", "18px").style("height", "18px").style("border-radius", "3px").style("object-fit", "cover");
-      $$brand.append("span").style("font-size", "12px").style("font-weight", "700").style("color", "#0284c7").text("LandAssist");
-      $$brand.append("span").style("display", "inline-flex").style("align-items", "center").style("gap", "3px").style("font-size", "10px").style("font-weight", "600").style("color", "#059669").style("background", "#ecfdf5").style("border", "1px solid #a7f3d0").style("border-radius", "10px").style("padding", "1px 5px").html('<span style="width:5px;height:5px;border-radius:50%;background:#10b981;display:inline-block;"></span>Live');
-      $brand = $brand.merge($$brand);
+        .attr("title", "Focus Landuse & Boundaries: Hides buildings and roads for high-contrast satellite tracing")
+        .on("click", this.toggleFocus);
+      $$focusBtn.append("span").attr("class", "focus-icon").style("display", "flex").style("align-items", "center").html(
+        '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>'
+      );
+      $$focusBtn.append("span").attr("class", "label").style("font-size", "12px").style("font-weight", "700").text("Focus Landuse");
+      $focusBtn = $focusBtn.merge($$focusBtn);
+      $focusBtn.classed("active", isFocus)
+        .style("background", isFocus ? "#ecfdf5" : "")
+        .style("color", isFocus ? "#059669" : "");
 
-      let $api = $joined.selectAll("button.api-btn").data([0]);
-      const $$api = $api.enter().append("button").attr("class", "bar-button api-btn")
+      // Button 2: All Data (Reset view)
+      let $allBtn = $joined.selectAll("button.all-btn").data([0]);
+      const $$allBtn = $allBtn.enter().append("button")
+        .attr("class", "bar-button all-btn")
         .style("cursor", "pointer")
-        .style("font-size", "11px")
-        .style("font-weight", "600")
-        .style("color", "#475569")
+        .style("display", "flex")
+        .style("align-items", "center")
         .style("padding", "0 8px")
-        .attr("title", "Open OpenAPI / Swagger Documentation (/docs)")
-        .text("API")
-        .on("click", (e) => {
-          if (e) e.preventDefault();
-          window.open("/docs", "_blank");
-        });
-      $api = $api.merge($$api);
+        .style("font-size", "11.5px")
+        .attr("title", "Show All Features: Restore buildings, roads, and points")
+        .on("click", this.showAll);
+      $$allBtn.append("span").attr("class", "label").style("font-weight", "600").text("All Data");
+      $allBtn = $allBtn.merge($$allBtn);
+      $allBtn.classed("active", !isFocus)
+        .style("background", !isFocus ? "#f1f5f9" : "")
+        .style("color", !isFocus ? "#0f172a" : "#64748b");
 
-      let $qa = $joined.selectAll("button.qa-btn").data([0]);
-      const $$qa = $qa.enter().append("button").attr("class", "bar-button qa-btn")
+      // Button 3: Feature Filters settings (opens Map Data panel F)
+      let $filterOpts = $joined.selectAll("button.filter-options-btn").data([0]);
+      const $$filterOpts = $filterOpts.enter().append("button")
+        .attr("class", "bar-button filter-options-btn")
         .style("cursor", "pointer")
-        .style("font-size", "11px")
-        .style("font-weight", "600")
-        .style("color", "#475569")
-        .style("padding", "0 8px")
-        .attr("title", "Open Quality Assurance (QA) Viewer (/qa)")
-        .text("QA")
-        .on("click", (e) => {
-          if (e) e.preventDefault();
-          window.open("/qa", "_blank");
-        });
-      $qa = $qa.merge($$qa);
+        .style("display", "flex")
+        .style("align-items", "center")
+        .style("padding", "0 7px")
+        .attr("title", "Open Feature Filters panel (F)")
+        .on("click", this.openPanel);
+      $$filterOpts.append("span").style("display", "flex").style("align-items", "center").html(
+        '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>'
+      );
+      $filterOpts = $filterOpts.merge($$filterOpts);
     }
   };
 
@@ -133332,7 +133396,7 @@ ${url_tokens}
      */
     constructor(context2) {
       this.context = context2;
-      this.Brand = new UiLandAssistBrandTool(context2);
+      this.FilterTool = new UiDataFilterTool(context2);
       this.DrawModes = new UiDrawModesTool(context2);
       this.Rapid = new UiRapidTool(context2);
       this.UndoRedo = new UiUndoRedoTool(context2);
@@ -133361,7 +133425,7 @@ ${url_tokens}
       const urlhash = context2.systems.urlhash;
       const ui = context2.systems.ui;
       const tools = [
-        this.Brand,
+        this.FilterTool,
         "spacer",
         this.DrawModes,
         this.Rapid,
@@ -133387,7 +133451,15 @@ ${url_tokens}
       $items.selectAll(".item-content").each((d2, i3, nodes) => {
         select_default2(nodes[i3]).call(d2.render);
       });
-      $items.selectAll(".item-label").text((d2) => (d2.id === "landassist_brand" ? "Tangerang v1.1" : (d2.id === "rapid_features" ? "AI Assist" : l10n.t(d2.stringID))));
+      $items.selectAll(".item-label").text((d2) => {
+        if (d2.id === "data_filter") {
+          return d2.isFocusActive() ? "Landuse & Bounds" : "All Features";
+        }
+        if (d2.id === "rapid_features") {
+          return "AI Assist";
+        }
+        return l10n.t(d2.stringID);
+      });
       ui.checkOverflow(".map-toolbar", true);
     }
   };

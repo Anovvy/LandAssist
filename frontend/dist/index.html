@@ -26,29 +26,7 @@
   </head>
 
   <body>
-    <!-- LandAssist Satellite Brand Badge -->
-    <div id="landassist-brand-bar" style="position:absolute; top:10px; left:10px; z-index:9999; display:flex; align-items:center; gap:12px; background:rgba(15,23,42,0.92); backdrop-filter:blur(8px); border:1px solid rgba(56,189,248,0.35); border-radius:10px; padding:6px 14px; box-shadow:0 4px 16px rgba(0,0,0,0.4); font-family:system-ui,-apple-system,sans-serif; pointer-events:auto;">
-      <div style="display:flex; align-items:center; gap:8px;">
-        <span style="font-size:18px;">🛰️</span>
-        <div>
-          <div style="font-size:13px; font-weight:800; color:#38bdf8; letter-spacing:0.02em;">LandAssist <span style="color:#10b981; font-weight:600;">Web Editor</span></div>
-          <div style="font-size:10px; color:#94a3b8;">Kabupaten Tangerang (v1.1.0 • 2,460 Parcels) • SegFormer GSE</div>
-        </div>
-      </div>
-      <div style="height:22px; width:1px; background:rgba(255,255,255,0.15);"></div>
-      <div style="display:flex; align-items:center; gap:6px; font-size:11px; font-weight:600; color:#10b981;">
-        <span style="width:7px; height:7px; border-radius:50%; background:#10b981; box-shadow:0 0 8px #10b981; display:inline-block;"></span>
-        <span>Live PostGIS</span>
-      </div>
-      <a href="/docs" target="_blank" style="font-size:11px; color:#cbd5e1; text-decoration:none; padding:3px 8px; border-radius:5px; background:rgba(255,255,255,0.08); transition:background 0.2s;">Swagger API</a>
-      <a href="/qa" target="_blank" style="font-size:11px; color:#cbd5e1; text-decoration:none; padding:3px 8px; border-radius:5px; background:rgba(255,255,255,0.08); transition:background 0.2s;">QA Viewer</a>
-      <div style="height:22px; width:1px; background:rgba(255,255,255,0.15);"></div>
-      <button id="btn-focus-landuse" onclick="window.toggleLanduseFocus()" title="Toggle Focus Mode (Shift+F): Hides buildings and roads for 60FPS zooming and clear imagery comparison" style="display:flex; align-items:center; gap:6px; font-size:11px; font-weight:700; color:#38bdf8; background:rgba(56,189,248,0.15); border:1px solid rgba(56,189,248,0.4); border-radius:6px; padding:4px 10px; cursor:pointer; transition:all 0.2s;">
-        <span>🎯</span>
-        <span id="txt-focus-mode">Focus Landuse: OFF</span>
-      </button>
-    </div>
-
+    
     <div id='rapid-container'></div>
 
     <script src='rapid.js'></script>

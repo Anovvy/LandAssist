@@ -132624,14 +132624,15 @@ ${url_tokens}
         '<div style="display:flex; flex-direction:column; gap:2px;"><span style="font-size:13px; font-weight:700; color:#cbd5e1;">📍 Focus AOI (Kabupaten Tangerang)</span><span style="font-size:11px; color:#94a3b8;">Coordinates: 106.5000, -6.2200 • Zoom: 14.50</span></div>'
       );
 
-      // 4. Action Buttons (Done / OK)
+      // 4. Action Buttons (Swagger API, QA Viewer, Apply / Close)
       let $buttons = $content.selectAll(".modal-section.buttons").data([0]);
-      const $$buttons = $buttons.enter().append("div").attr("class", "modal-section buttons");
-      $$buttons.append("button").attr("class", "button ok-button action").style("background", "#10B981").style("color", "#ffffff").style("font-weight", "700").on("click", () => this.$modal.close());
-      const buttonNode = $$buttons.selectAll("button").node();
+      const $$buttons = $buttons.enter().append("div").attr("class", "modal-section buttons").style("display", "flex").style("gap", "8px").style("justify-content", "flex-end");
+      $$buttons.append("button").attr("class", "button secondary-action").style("font-size", "12px").text("Swagger API").on("click", () => window.open("/docs", "_blank"));
+      $$buttons.append("button").attr("class", "button secondary-action").style("font-size", "12px").text("QA Viewer").on("click", () => window.open("/qa", "_blank"));
+      $$buttons.append("button").attr("class", "button ok-button action").style("background", "#10B981").style("color", "#ffffff").style("font-weight", "700").text("Apply / Close").on("click", () => this.$modal.close());
+      const buttonNode = $$buttons.selectAll("button.ok-button").node();
       if (buttonNode) buttonNode.focus();
       $buttons = $buttons.merge($$buttons);
-      $buttons.selectAll(".button").text("Apply / Close");
     }
     /**
      * renderDatasets
@@ -133255,6 +133256,74 @@ ${url_tokens}
     }
   };
 
+  // modules/ui/tools/UiLandAssistBrandTool.js
+  var UiLandAssistBrandTool = class {
+    constructor(context2) {
+      this.context = context2;
+      this.id = "landassist_brand";
+      this.stringID = "toolbar.landassist_brand";
+      this.$parent = null;
+      this.render = this.render.bind(this);
+    }
+    render($parent = this.$parent) {
+      if ($parent instanceof selection_default) {
+        this.$parent = $parent;
+      } else {
+        return;
+      }
+      let $joined = $parent.selectAll(".joined").data([0]);
+      const $$joined = $joined.enter().append("div").attr("class", "joined").style("display", "flex");
+      $joined = $joined.merge($$joined);
+
+      let $brand = $joined.selectAll("button.brand-btn").data([0]);
+      const $$brand = $brand.enter().append("button").attr("class", "bar-button brand-btn")
+        .style("cursor", "pointer")
+        .style("display", "flex")
+        .style("align-items", "center")
+        .style("gap", "6px")
+        .style("padding", "0 10px")
+        .attr("title", "LandAssist Web Editor — Model: SegFormer GSE • Pilot: Kabupaten Tangerang (v1.1.0 • 2,460 Parcels)")
+        .on("click", (e) => {
+          if (e) e.preventDefault();
+          this.context.systems.map.centerZoomEase([106.5000, -6.2200], 14.5);
+        });
+      $$brand.append("img").attr("src", "img/landassist_logo.jpg").attr("alt", "LandAssist").style("width", "18px").style("height", "18px").style("border-radius", "3px").style("object-fit", "cover");
+      $$brand.append("span").style("font-size", "12px").style("font-weight", "700").style("color", "#0284c7").text("LandAssist");
+      $$brand.append("span").style("display", "inline-flex").style("align-items", "center").style("gap", "3px").style("font-size", "10px").style("font-weight", "600").style("color", "#059669").style("background", "#ecfdf5").style("border", "1px solid #a7f3d0").style("border-radius", "10px").style("padding", "1px 5px").html('<span style="width:5px;height:5px;border-radius:50%;background:#10b981;display:inline-block;"></span>Live');
+      $brand = $brand.merge($$brand);
+
+      let $api = $joined.selectAll("button.api-btn").data([0]);
+      const $$api = $api.enter().append("button").attr("class", "bar-button api-btn")
+        .style("cursor", "pointer")
+        .style("font-size", "11px")
+        .style("font-weight", "600")
+        .style("color", "#475569")
+        .style("padding", "0 8px")
+        .attr("title", "Open OpenAPI / Swagger Documentation (/docs)")
+        .text("API")
+        .on("click", (e) => {
+          if (e) e.preventDefault();
+          window.open("/docs", "_blank");
+        });
+      $api = $api.merge($$api);
+
+      let $qa = $joined.selectAll("button.qa-btn").data([0]);
+      const $$qa = $qa.enter().append("button").attr("class", "bar-button qa-btn")
+        .style("cursor", "pointer")
+        .style("font-size", "11px")
+        .style("font-weight", "600")
+        .style("color", "#475569")
+        .style("padding", "0 8px")
+        .attr("title", "Open Quality Assurance (QA) Viewer (/qa)")
+        .text("QA")
+        .on("click", (e) => {
+          if (e) e.preventDefault();
+          window.open("/qa", "_blank");
+        });
+      $qa = $qa.merge($$qa);
+    }
+  };
+
   // modules/ui/UiMapToolbar.js
   var UiMapToolbar = class {
     /**
@@ -133263,6 +133332,7 @@ ${url_tokens}
      */
     constructor(context2) {
       this.context = context2;
+      this.Brand = new UiLandAssistBrandTool(context2);
       this.DrawModes = new UiDrawModesTool(context2);
       this.Rapid = new UiRapidTool(context2);
       this.UndoRedo = new UiUndoRedoTool(context2);
@@ -133291,6 +133361,7 @@ ${url_tokens}
       const urlhash = context2.systems.urlhash;
       const ui = context2.systems.ui;
       const tools = [
+        this.Brand,
         "spacer",
         this.DrawModes,
         this.Rapid,
@@ -133316,7 +133387,7 @@ ${url_tokens}
       $items.selectAll(".item-content").each((d2, i3, nodes) => {
         select_default2(nodes[i3]).call(d2.render);
       });
-      $items.selectAll(".item-label").text((d2) => (d2.id === "rapid_features" ? "AI Assist" : l10n.t(d2.stringID)));
+      $items.selectAll(".item-label").text((d2) => (d2.id === "landassist_brand" ? "Tangerang v1.1" : (d2.id === "rapid_features" ? "AI Assist" : l10n.t(d2.stringID))));
       ui.checkOverflow(".map-toolbar", true);
     }
   };

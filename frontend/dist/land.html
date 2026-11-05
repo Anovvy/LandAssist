@@ -1,15 +1,33 @@
 <!DOCTYPE html>
 <html>
-<!--
-This file serves as the 'redirect_uri' to complete the OAuth handshake.
-It receives the authorization code and closes its own window.
--->
-  <head></head>
-  <body>
+  <head>
+    <meta charset="utf-8">
+    <title>LandAssist — OpenStreetMap Authentication</title>
+  </head>
+  <body style="background: #0f172a; color: #f8fafc; font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0;">
+    <div style="text-align: center; padding: 20px;">
+      <h3 style="margin-bottom: 8px; color: #38bdf8;">Authenticating with OpenStreetMap...</h3>
+      <p style="color: #94a3b8; font-size: 14px;">This window will close automatically once authorization completes.</p>
+    </div>
     <script>
-      if (new URLSearchParams(location.search).has("code")) {
-        new BroadcastChannel("osm-api-auth-complete").postMessage(location.href);
-        window.close();
+      var params = new URLSearchParams(location.search);
+      if (params.has("code") || params.has("error")) {
+        try {
+          var bc = new BroadcastChannel("osm-api-auth-complete");
+          bc.postMessage(location.href);
+        } catch (e) {
+          console.warn("BroadcastChannel error:", e);
+        }
+        if (window.opener) {
+          try {
+            window.opener.postMessage(location.href, "*");
+          } catch (e) {
+            console.warn("window.opener error:", e);
+          }
+        }
+        setTimeout(function() {
+          window.close();
+        }, 500);
       }
     </script>
   </body>

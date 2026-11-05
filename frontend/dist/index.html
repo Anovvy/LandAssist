@@ -3,7 +3,7 @@
   <head>
     <meta charset='utf-8'>
     <title>LandAssist — AI-Assisted OpenStreetMap Web Editor</title>
-    <link rel='stylesheet' href='rapid.css?v=1.1.1'>
+    <link rel='stylesheet' href='rapid.css?v=1.1.2'>
     <link rel='icon' type='image/jpeg' href='img/landassist_logo.jpg'>
 
     <meta name='viewport' content='width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no'/>
@@ -29,18 +29,21 @@
     
     <div id='rapid-container'></div>
 
-    <script src='rapid.js?v=1.1.1'></script>
+    <script src='rapid.js?v=1.1.2'></script>
     <script>
       (async function() {
         // Automatically route to Tangerang AOI with LandAssist GeoJSON layer
         if (!window.location.hash || window.location.hash.length <= 1) {
-          window.location.hash = '#map=14.50/-6.2200/106.5000&data=/v1/landuse.geojson';
+          window.location.hash = '#map=14.50/-6.2200/106.5000&data=/v1/landuse.geojson&datasets=none';
         } else {
           if (!window.location.hash.includes('data=')) {
             window.location.hash += '&data=/v1/landuse.geojson';
           }
           if (!window.location.hash.includes('map=')) {
             window.location.hash += '&map=14.50/-6.2200/106.5000';
+          }
+          if (!window.location.hash.includes('datasets=')) {
+            window.location.hash += '&datasets=none';
           }
         }
 
@@ -81,6 +84,19 @@
           window.rapidContext = context;
           context.initAsync().then(() => {
             console.log('[LandAssist] Standalone Web Editor initialized with dynamic OAuth configuration!');
+            // Permanently disable default Rapid AI datasets (Overture/Esri/Microsoft buildings & roads)
+            try {
+              if (typeof context.scene === 'function' && context.scene()) {
+                context.scene().disableLayers('rapid');
+              }
+              if (context.systems && context.systems.rapid) {
+                if (context.systems.rapid.catalog) {
+                  context.systems.rapid.disableDatasets(context.systems.rapid.catalog.keys());
+                }
+              }
+            } catch (err) {
+              console.warn('[LandAssist] Note disabling rapid layer:', err);
+            }
           });
         }
       })();

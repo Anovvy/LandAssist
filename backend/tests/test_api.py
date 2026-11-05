@@ -103,3 +103,13 @@ def test_editor_endpoint_returns_200() -> None:
     assert "text/html" in response.headers.get("content-type", "")
     assert "LandAssist" in response.text
 
+
+def test_auth_config_endpoint_returns_200() -> None:
+    """Verify GET /v1/auth/config returns dynamic OAuth 2.0 configuration structure."""
+    response = client.get("/v1/auth/config")
+    assert response.status_code == 200
+    payload = response.json()
+    assert "osm_client_id" in payload
+    assert "osm_scope" in payload
+    assert "write_api" in payload["osm_scope"]
+

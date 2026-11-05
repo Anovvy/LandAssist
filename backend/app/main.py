@@ -10,7 +10,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
 from app.db import db
-from app.routers import geojson, health, tiles
+from app.routers import auth, geojson, health, tiles
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 FRONTEND_DIST = REPO_ROOT / "frontend" / "dist"
@@ -53,6 +53,7 @@ app.add_middleware(
 app.include_router(health.router)
 app.include_router(geojson.router)
 app.include_router(tiles.router)
+app.include_router(auth.router)
 
 # Mount custom Rapid Editor frontend directly under /editor
 if FRONTEND_DIST.exists():

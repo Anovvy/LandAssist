@@ -12,6 +12,8 @@ class Settings(BaseSettings):
     default_model_version: str = "v1.0.0"
     cors_origins: list[str] = ["*"]
     max_features_per_request: int = 5000
+    osm_client_id: str | None = None
+    osm_scope: str = "read_prefs write_prefs write_api"
 
     model_config = SettingsConfigDict(
         env_file=".env",

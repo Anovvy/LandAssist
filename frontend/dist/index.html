@@ -48,42 +48,59 @@
 
     <script src='rapid.js'></script>
     <script>
-      // Automatically route to Tangerang AOI with LandAssist GeoJSON layer
-      if (!window.location.hash || window.location.hash.length <= 1) {
-        window.location.hash = '#map=14.50/-6.2200/106.5000&data=/v1/landuse.geojson';
-      } else {
-        if (!window.location.hash.includes('data=')) {
-          window.location.hash += '&data=/v1/landuse.geojson';
-        }
-        if (!window.location.hash.includes('map=')) {
-          window.location.hash += '&map=14.50/-6.2200/106.5000';
-        }
-      }
-
-      var container = document.getElementById('rapid-container');
-      if (typeof Rapid === 'undefined') {
-        container.innerHTML = '<div style="padding:20px; font-family:sans-serif; color:#da26d3;"><h3>Failed to load LandAssist Web Editor engine.</h3></div>';
-      } else {
-        const context = new Rapid.Context();
-        context.containerNode = container;
-        context.assetPath = '';
-        context.buildID = 'landassist-web-editor';
-        context.buildSHA = 'v1.0.0';
-        context.buildDate = '2026-11-04';
-        context.apiConnections = [
-          {
-            url: 'https://www.openstreetmap.org',
-            apiUrl: 'https://api.openstreetmap.org',
-            client_id: 'O3g0mOUuA2WY5Fs826j5tP260qR3DDX7cIIE2R2WWSc',
-            client_secret: 'b4aeHD1cNeapPPQTrvpPoExqQRjybit6JBlNnxh62uE'
+      (async function() {
+        // Automatically route to Tangerang AOI with LandAssist GeoJSON layer
+        if (!window.location.hash || window.location.hash.length <= 1) {
+          window.location.hash = '#map=14.50/-6.2200/106.5000&data=/v1/landuse.geojson';
+        } else {
+          if (!window.location.hash.includes('data=')) {
+            window.location.hash += '&data=/v1/landuse.geojson';
           }
-        ];
+          if (!window.location.hash.includes('map=')) {
+            window.location.hash += '&map=14.50/-6.2200/106.5000';
+          }
+        }
 
-        window.rapidContext = context;
-        context.initAsync().then(() => {
-          console.log('[LandAssist] Standalone Web Editor initialized with native landuse presets & styling!');
-        });
-      }
+        // Fetch dynamic OAuth 2.0 configuration from backend environment (Render / .env)
+        try {
+          const authRes = await fetch('/v1/auth/config');
+          if (authRes.ok) {
+            const authConfig = await authRes.json();
+            if (authConfig.osm_client_id) {
+              window.LANDASSIST_OSM_CLIENT_ID = authConfig.osm_client_id;
+              window.LANDASSIST_OSM_SCOPE = authConfig.osm_scope || 'read_prefs write_prefs write_api';
+            }
+          }
+        } catch (e) {
+          console.warn('[LandAssist] Note: Dynamic auth config endpoint unreachable, using client defaults.');
+        }
+
+        var container = document.getElementById('rapid-container');
+        if (typeof Rapid === 'undefined') {
+          container.innerHTML = '<div style="padding:20px; font-family:sans-serif; color:#da26d3;"><h3>Failed to load LandAssist Web Editor engine.</h3></div>';
+        } else {
+          const context = new Rapid.Context();
+          context.containerNode = container;
+          context.assetPath = '';
+          context.buildID = 'landassist-web-editor';
+          context.buildSHA = 'v1.0.0';
+          context.buildDate = '2026-11-04';
+          if (window.LANDASSIST_OSM_CLIENT_ID) {
+            context.apiConnections = [
+              {
+                url: 'https://www.openstreetmap.org',
+                apiUrl: 'https://api.openstreetmap.org',
+                client_id: window.LANDASSIST_OSM_CLIENT_ID
+              }
+            ];
+          }
+
+          window.rapidContext = context;
+          context.initAsync().then(() => {
+            console.log('[LandAssist] Standalone Web Editor initialized with dynamic OAuth configuration!');
+          });
+        }
+      })();
     </script>
   </body>
 </html>

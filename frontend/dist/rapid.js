@@ -151768,14 +151768,19 @@ ${url_tokens}
       }
     }
     function _getAccessToken(auth_code, code_verifier, accessTokenDone) {
-      var url = o2.url + "/oauth2/token?" + utilQsString2({
+      var tokenParams = {
         client_id: o2.client_id,
         redirect_uri: o2.redirect_uri,
         grant_type: "authorization_code",
         code: auth_code,
-        code_verifier
-      });
-      oauth.rawxhr("POST", url, null, null, null, accessTokenDone);
+        code_verifier: code_verifier
+      };
+      if (o2.client_secret) {
+        tokenParams.client_secret = o2.client_secret;
+      }
+      var body = utilQsString2(tokenParams);
+      var url = o2.url + "/oauth2/token?" + body;
+      oauth.rawxhr("POST", url, null, body, { "Content-Type": "application/x-www-form-urlencoded" }, accessTokenDone);
       o2.loading();
     }
     oauth.bringPopupWindowToFront = function() {
@@ -152009,16 +152014,21 @@ ${url_tokens}
         }
         redirect_uri = `${origin}${pathname}land.html`;
       }
-      this._oauth = osmAuth({
+      const osmClientId = (typeof window !== "undefined" && window.LANDASSIST_OSM_CLIENT_ID) || (context2?.apiConnections?.[0]?.client_id) || "";
+      const osmScope = (typeof window !== "undefined" && window.LANDASSIST_OSM_SCOPE) || "read_prefs write_prefs write_api";
+      const oauthOpts = {
         url: this._wwwroot,
         apiUrl: this._apiroot,
-        client_id: "O3g0mOUuA2WY5Fs826j5tP260qR3DDX7cIIE2R2WWSc",
-        client_secret: "b4aeHD1cNeapPPQTrvpPoExqQRjybit6JBlNnxh62uE",
-        scope: "read_prefs write_prefs write_api read_gpx write_notes",
-        redirect_uri,
+        client_id: osmClientId,
+        scope: osmScope,
+        redirect_uri: redirect_uri,
         loading: this._authLoading,
         done: this._authDone
-      });
+      };
+      if (typeof window !== "undefined" && window.LANDASSIST_OSM_CLIENT_SECRET) {
+        oauthOpts.client_secret = window.LANDASSIST_OSM_CLIENT_SECRET;
+      }
+      this._oauth = osmAuth(oauthOpts);
     }
     /**
      * initAsync

@@ -140,12 +140,20 @@ async def ingest_features_to_postgis(
 
 def ingest_geojson_to_postgis(
     geojson_path: str | Path,
-    db_url: str,
+    db_url: str | None = None,
     model_version: str = "v1.0.0",
     replace_version: bool = True,
     batch_size: int = 500,
+    *,
+    database_url: str | None = None,
+    truncate_version: bool | None = None,
 ) -> int:
     """Read a `.geojson` file and ingest into PostGIS using asyncpg."""
+    resolved_db = db_url or database_url
+    if not resolved_db:
+        raise ValueError("Must provide db_url (or database_url).")
+    resolved_replace = replace_version if truncate_version is None else truncate_version
+
     with open(geojson_path, "r", encoding="utf-8") as f:
         data = json.load(f)
 
@@ -153,9 +161,9 @@ def ingest_geojson_to_postgis(
     return asyncio.run(
         ingest_features_to_postgis(
             features=features,
-            db_url=db_url,
+            db_url=resolved_db,
             model_version=model_version,
-            replace_version=replace_version,
+            replace_version=resolved_replace,
             batch_size=batch_size,
         )
     )

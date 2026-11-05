@@ -86,13 +86,16 @@ def _generate_tile_Grid(
 
 def run_sliding_window_inference(
     model: nn.Module,
-    gse_tif_path: str | Path,
-    temp_dir: str | Path,
+    gse_tif_path: str | Path | None = None,
+    temp_dir: str | Path | None = None,
     tile_size: int = 160,
     overlap: int = 80,
     batch_size: int = 8,
     device: str | torch.device = "cuda",
     num_classes: int = 3,
+    *,
+    geotiff_path: str | Path | None = None,
+    work_dir: str | Path | None = None,
 ) -> tuple[np.memmap, dict[str, Any]]:
     """Run memory-bounded sliding-window inference over a 64-band GSE GeoTIFF.
 
@@ -109,13 +112,22 @@ def run_sliding_window_inference(
         batch_size: Number of windows evaluated per GPU/CPU forward pass.
         device: Torch device (`"cuda"` or `"cpu"`).
         num_classes: Number of output segmentation classes (default `3`).
+        geotiff_path: Keyword alias for `gse_tif_path`.
+        work_dir: Keyword alias for `temp_dir`.
 
     Returns:
         Tuple of `(prob_mmap, raster_meta)` where `prob_mmap` has shape `(3, H, W)`
         and `dtype=float16`.
     """
-    tif_path = Path(gse_tif_path)
-    out_temp_dir = Path(temp_dir)
+    actual_tif = gse_tif_path if gse_tif_path is not None else geotiff_path
+    if actual_tif is None:
+        raise ValueError("Must provide gse_tif_path (or geotiff_path).")
+    actual_temp = temp_dir if temp_dir is not None else work_dir
+    if actual_temp is None:
+        raise ValueError("Must provide temp_dir (or work_dir).")
+
+    tif_path = Path(actual_tif)
+    out_temp_dir = Path(actual_temp)
     out_temp_dir.mkdir(parents=True, exist_ok=True)
 
     if isinstance(device, str) and device.startswith("cuda") and not torch.cuda.is_available():

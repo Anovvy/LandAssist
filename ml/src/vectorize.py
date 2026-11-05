@@ -344,13 +344,32 @@ def prob_map_to_osm_polygons(
 
 
 def export_visual_qa_html(
-    gdf: gpd.GeoDataFrame,
-    html_path: str | Path,
+    gdf: gpd.GeoDataFrame | str | Path | None = None,
+    html_path: str | Path | None = None,
+    *,
+    geojson_path: str | Path | None = None,
+    out_html_path: str | Path | None = None,
+    output_html_path: str | Path | None = None,
+    model_version: str | None = None,
 ) -> Path:
-    """Generate a standalone interactive Leaflet + Satellite QA map HTML before PostGIS ingestion."""
-    out_html = Path(html_path)
+    """Generate a standalone interactive Leaflet + Satellite QA map HTML before PostGIS ingestion.
+
+    Supports either a direct GeoDataFrame or a GeoJSON file path as input.
+    """
+    target_html = html_path or out_html_path or output_html_path
+    if target_html is None:
+        raise ValueError("Must specify an output html path via html_path, out_html_path, or output_html_path.")
+    out_html = Path(target_html)
     out_html.parent.mkdir(parents=True, exist_ok=True)
-    geojson_str = gdf.to_json() if not gdf.empty else '{"type": "FeatureCollection", "features": []}'
+
+    input_data = gdf if gdf is not None else geojson_path
+    if isinstance(input_data, (str, Path)):
+        p_in = Path(input_data)
+        geojson_str = p_in.read_text(encoding="utf-8") if p_in.exists() else '{"type": "FeatureCollection", "features": []}'
+    elif isinstance(input_data, gpd.GeoDataFrame):
+        geojson_str = input_data.to_json() if not input_data.empty else '{"type": "FeatureCollection", "features": []}'
+    else:
+        geojson_str = '{"type": "FeatureCollection", "features": []}'
 
     html_content = f"""<!DOCTYPE html>
 <html lang="en">

@@ -6,7 +6,7 @@
 
 <p align="center">
   <strong>AI-Assisted Earth Observation & Vector Delivery System for OpenStreetMap Web Editor</strong><br>
-  <em>Production Release: v0.1.0 — Pilot AOI: Kabupaten Tangerang, Banten, Indonesia</em>
+  <em>Production Release: v0.1.0 — Pilot AOI: Kabupaten Tangerang, Banten, Indonesia (v1.1.0 • 2,460 Parcels)</em>
 </p>
 
 <p align="center">
@@ -31,7 +31,7 @@ LandAssist is deployed 24/7 on high-availability cloud infrastructure (Singapore
 | **Visual Satellite QA Viewer** | **[Open Visual QA Map](https://landassist-api.onrender.com/qa)** | Fullscreen Leaflet viewer with high-resolution Google Satellite imagery and vector overlay inspections. |
 | **Interactive API Documentation** | **[Open Swagger / OpenAPI](https://landassist-api.onrender.com/docs)** | Interactive Swagger UI console to query and test spatial endpoints directly from your browser. |
 | **Live GeoJSON Spatial Stream** | **[GET /v1/landuse.geojson](https://landassist-api.onrender.com/v1/landuse.geojson)** | Production FeatureCollection with OSM-compliant tags ready for GIS and web map clients. |
-| **System & Database Health Probe** | **[GET /healthz](https://landassist-api.onrender.com/healthz)** | Real-time liveness and database connection status probe (`status: ok`, model: `v1.0.0`). |
+| **System & Database Health Probe** | **[GET /healthz](https://landassist-api.onrender.com/healthz)** | Real-time liveness and database connection status probe (`status: ok`, default model: `v1.1.0`). |
 
 ---
 
@@ -106,7 +106,7 @@ flowchart TD
     end
 
     subgraph DataLayer["4. Cloud Spatial Storage & Fast API Delivery"]
-        Reproject --> DB[("Supabase PostGIS 17 + PostGIS 3.3.7\nTable: landuse_predictions (106 Polygons)\nGIST Spatial Index + Supavisor IPv4 Pooler")]
+        Reproject --> DB[("Supabase PostGIS 17 + PostGIS 3.3.7\nTable: landuse_predictions (2,460 Polygons)\nGIST Spatial Index + Supavisor IPv4 Pooler")]
         DB --> API["FastAPI Production Engine\nHosted 24/7 on Render (Singapore)"]
     end
 
@@ -193,8 +193,8 @@ Base URL: `https://landassist-api.onrender.com`
 
 LandAssist maintains an automated CI/CD pipeline ensuring 100% test pass rate and clean code quality:
 
-- **17 Automated Unit Tests (100% Pass Rate)**:
-  - **FastAPI Backend (8 tests)**: Health probe, model version inventory, GeoJSON validation, spatial bounding-box filtering, invalid bbox handling, CORS headers, MVT endpoints, and `/editor/` mount.
+- **20 Automated Unit Tests (100% Pass Rate)**:
+  - **FastAPI Backend (11 tests)**: Health probe, model version inventory, GeoJSON validation, spatial bounding-box filtering, invalid bbox handling, CORS headers, MVT endpoints, dynamic OAuth config, prediction staging lifecycle (/stage, /revert, /reject), batch commit, and /editor/ mount.
   - **ML Pipeline (9 tests)**: 64-channel SegFormer instantiation, WeightedCE Dice loss, 2D Hann window, grid generation, Chaikin smoothing, polygon simplification, probability map vectorization, MultiPolygon promotion, and checkpoint resolution.
 - **Ruff Code Linter**: Clean (0 errors / 0 warnings across all Python modules).
 - **Automated Antigravity AI Review**: Evaluates every PR against strict spatial and security rules using Google Gemini 2.5 Flash.
